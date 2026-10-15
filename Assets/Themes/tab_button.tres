@@ -1,0 +1,24 @@
+[gd_resource type="Theme" format=3 uid="uid://bw56rfgenj5we"]
+
+[ext_resource type="FontFile" uid="uid://c7j5gn0kb6tjr" path="res://Assets/Fonts/KenneyFonts/kenvector_future_thin.ttf" id="1_venct"]
+[ext_resource type="StyleBox" uid="uid://coq844yu8ukyy" path="res://Assets/Themes/tab_button_texture_stylebox.tres" id="2_by3hx"]
+[ext_resource type="Texture2D" uid="uid://c0jp0eo7t534j" path="res://Assets/Sprites/UI/buttonLong_beige_pressed.png" id="3_0eyql"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_venct"]
+texture = ExtResource("3_0eyql")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 8.0
+axis_stretch_horizontal = 1
+modulate_color = Color(0.8039216, 0.8039216, 0.8039216, 1)
+
+[resource]
+Button/colors/font_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
+Button/colors/font_hover_color = Color(0.8862616, 0.88626146, 0.8862615, 1)
+Button/colors/font_pressed_color = Color(0, 0, 0, 1)
+Button/font_sizes/font_size = 24
+Button/fonts/font = ExtResource("1_venct")
+Button/styles/hover = ExtResource("2_by3hx")
+Button/styles/normal = ExtResource("2_by3hx")
+Button/styles/pressed = SubResource("StyleBoxTexture_venct")

@@ -1,3 +1,243 @@
 [gd_scene format=3 uid="uid://iyx7xvat28ls"]
 
-[node name="Interface" type="Node2D" unique_id=1384875188]
+[ext_resource type="Theme" uid="uid://d3f2kp555bubg" path="res://Assets/Themes/asset_button.tres" id="1_54esn"]
+[ext_resource type="StyleBox" uid="uid://b860mapqt4la4" path="res://Assets/Themes/ui_category_container.tres" id="1_o8ses"]
+[ext_resource type="Theme" uid="uid://bw56rfgenj5we" path="res://Assets/Themes/tab_button.tres" id="2_55rxr"]
+[ext_resource type="Texture2D" uid="uid://36wt8il63qaa" path="res://Assets/Sprites/UI/panel_beige.png" id="2_vl7gr"]
+[ext_resource type="Theme" uid="uid://cf3rdyv6kp6vg" path="res://Assets/Themes/end_turn_button.tres" id="3_55rxr"]
+[ext_resource type="PackedScene" uid="uid://fkib2ond4ukd" path="res://Editor/tile_map.tscn" id="3_o8ses"]
+[ext_resource type="Script" uid="uid://dc2j0kxm4s4ww" path="res://Editor/minimap.gd" id="4_rw8kj"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ux1dr"]
+bg_color = Color(0, 0, 0, 1)
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ux1dr"]
+texture = ExtResource("2_vl7gr")
+
+[node name="Editor" type="Control" unique_id=1657180169]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="UserInterface" type="VBoxContainer" parent="." unique_id=1170032562]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="FileContainer" type="PanelContainer" parent="UserInterface" unique_id=1917064987]
+layout_mode = 2
+theme_override_styles/panel = ExtResource("1_o8ses")
+
+[node name="FileMargins" type="MarginContainer" parent="UserInterface/FileContainer" unique_id=1728153965]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 17
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 16
+
+[node name="FileMenu" type="HBoxContainer" parent="UserInterface/FileContainer/FileMargins" unique_id=1609725751]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 12
+alignment = 1
+metadata/_edit_use_anchors_ = true
+
+[node name="RunButton" type="Button" parent="UserInterface/FileContainer/FileMargins/FileMenu" unique_id=496919282]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_54esn")
+text = "RUN"
+
+[node name="SaveButton" type="Button" parent="UserInterface/FileContainer/FileMargins/FileMenu" unique_id=1752650789]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_54esn")
+text = "SAVE
+"
+
+[node name="LoadButton" type="Button" parent="UserInterface/FileContainer/FileMargins/FileMenu" unique_id=745336489]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_54esn")
+text = "LOAD
+"
+
+[node name="ClearButton" type="Button" parent="UserInterface/FileContainer/FileMargins/FileMenu" unique_id=1321476905]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_54esn")
+text = "CLEAR"
+
+[node name="RemoveButton" type="Button" parent="UserInterface/FileContainer/FileMargins/FileMenu" unique_id=591371287]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_54esn")
+text = "REMOVE"
+
+[node name="EndButton" type="Button" parent="UserInterface/FileContainer/FileMargins/FileMenu" unique_id=190012830]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("1_54esn")
+text = "END"
+
+[node name="Game" type="Control" parent="UserInterface" unique_id=87351302]
+custom_minimum_size = Vector2(0, 720)
+custom_maximum_size = Vector2(-1, 720)
+layout_mode = 2
+
+[node name="Tiles" type="SubViewportContainer" parent="UserInterface/Game" unique_id=853837488]
+texture_filter = 2
+custom_maximum_size = Vector2(4800, -1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="TileViewport" type="SubViewport" parent="UserInterface/Game/Tiles" unique_id=654545749]
+disable_3d = true
+transparent_bg = true
+handle_input_locally = false
+canvas_item_default_texture_filter = 0
+canvas_cull_mask = 4294967291
+size = Vector2i(1920, 720)
+render_target_update_mode = 4
+
+[node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 instance=ExtResource("3_o8ses")]
+
+[node name="BottomContainer" type="PanelContainer" parent="UserInterface" unique_id=2132795045]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = ExtResource("1_o8ses")
+
+[node name="BottomDisplay" type="HBoxContainer" parent="UserInterface/BottomContainer" unique_id=1162005792]
+layout_mode = 2
+
+[node name="MinimapContainer" type="SubViewportContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=1562624181]
+texture_filter = 6
+custom_minimum_size = Vector2(456, 228)
+custom_maximum_size = Vector2(456, 228)
+layout_mode = 2
+size_flags_vertical = 4
+
+[node name="MinimapViewport" type="SubViewport" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer" unique_id=1775675694]
+handle_input_locally = false
+size = Vector2i(456, 228)
+render_target_update_mode = 4
+
+[node name="Minimap" type="Node2D" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport" unique_id=1977828250 node_paths=PackedStringArray("tilemap", "viewport", "camera")]
+script = ExtResource("4_rw8kj")
+tilemap = NodePath("../../../../../Game/Tiles/TileViewport/TileMap")
+viewport = NodePath("SubViewportContainer/MinimapRender")
+camera = NodePath("SubViewportContainer/MinimapRender/Camera")
+
+[node name="Background" type="ColorRect" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap" unique_id=1531157692]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 456.0
+offset_bottom = 228.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap" unique_id=2029496908]
+custom_minimum_size = Vector2(456, 228)
+custom_maximum_size = Vector2(456, 228)
+size_flags_horizontal = 3
+size_flags_vertical = 3
+stretch = true
+
+[node name="MinimapRender" type="SubViewport" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer" unique_id=123478906]
+disable_3d = true
+transparent_bg = true
+handle_input_locally = false
+canvas_cull_mask = 4294967293
+size = Vector2i(456, 228)
+render_target_update_mode = 4
+
+[node name="Camera" type="Camera2D" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer/MinimapRender" unique_id=979148093]
+
+[node name="Objects" type="VBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=1623881114]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TabMenu" type="HBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects" unique_id=599019031]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="StructureTab" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/Objects/TabMenu" unique_id=592751577]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_55rxr")
+toggle_mode = true
+text = "STRUCTURE"
+
+[node name="FunctionalTab" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/Objects/TabMenu" unique_id=1787828451]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_55rxr")
+toggle_mode = true
+text = "FUNCTIONAL"
+
+[node name="DecorativeTab" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/Objects/TabMenu" unique_id=779662920]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_55rxr")
+toggle_mode = true
+text = "DECORATIVE"
+
+[node name="EnemiesTab" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/Objects/TabMenu" unique_id=1112696498]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_55rxr")
+toggle_mode = true
+text = "ENEMIES"
+
+[node name="GameplayTab" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/Objects/TabMenu" unique_id=1798661196]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("2_55rxr")
+toggle_mode = true
+text = "GAMEPLAY"
+
+[node name="Objects" type="PanelContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects" unique_id=1537078619]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_ux1dr")
+
+[node name="EndTurnMenu" type="PanelContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=2017009980]
+texture_filter = 1
+custom_minimum_size = Vector2(228, 228)
+layout_mode = 2
+size_flags_horizontal = 8
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxTexture_ux1dr")
+
+[node name="EndTurnButton" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/EndTurnMenu" unique_id=376587840]
+texture_filter = 1
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(0.84, 0.84)
+theme = ExtResource("3_55rxr")
+text = "END
+TURN"

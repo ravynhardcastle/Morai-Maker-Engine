@@ -1,0 +1,20 @@
+[gd_resource type="Theme" format=3 uid="uid://cf3rdyv6kp6vg"]
+
+[ext_resource type="FontFile" uid="uid://c5in8dd54504n" path="res://Assets/Fonts/KenneyFonts/kenvector_future.ttf" id="1_18tjx"]
+[ext_resource type="StyleBox" uid="uid://boyrbk31v3tdp" path="res://Assets/Themes/end_turn_button_texture_style.tres" id="2_mp8yu"]
+[ext_resource type="Texture2D" uid="uid://csximlrd77tpv" path="res://Assets/Sprites/UI/panel_blue.png" id="3_18w8w"]
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_18tjx"]
+content_margin_top = 30.0
+content_margin_bottom = 29.0
+texture = ExtResource("3_18w8w")
+modulate_color = Color(0.8039216, 0.8039216, 0.8039216, 1)
+
+[resource]
+Button/colors/font_color = Color(0.19607843, 0.19607843, 0.19607843, 1)
+Button/colors/font_pressed_color = Color(0, 0, 0, 1)
+Button/font_sizes/font_size = 64
+Button/fonts/font = ExtResource("1_18tjx")
+Button/styles/hover = ExtResource("2_mp8yu")
+Button/styles/normal = ExtResource("2_mp8yu")
+Button/styles/pressed = SubResource("StyleBoxTexture_18tjx")
