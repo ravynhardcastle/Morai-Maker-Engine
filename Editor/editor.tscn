@@ -7,6 +7,7 @@
 [ext_resource type="Theme" uid="uid://cf3rdyv6kp6vg" path="res://Assets/Themes/end_turn_button.tres" id="3_55rxr"]
 [ext_resource type="PackedScene" uid="uid://fkib2ond4ukd" path="res://Editor/tile_map.tscn" id="3_o8ses"]
 [ext_resource type="Script" uid="uid://dc2j0kxm4s4ww" path="res://Editor/minimap.gd" id="4_rw8kj"]
+[ext_resource type="Script" uid="uid://hwci4ip8x4rx" path="res://Editor/objects.gd" id="6_8ctag"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ux1dr"]
 bg_color = Color(0, 0, 0, 1)
@@ -220,10 +221,31 @@ theme = ExtResource("2_55rxr")
 toggle_mode = true
 text = "GAMEPLAY"
 
-[node name="Objects" type="PanelContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects" unique_id=1537078619]
+[node name="Objects" type="ScrollContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects" unique_id=1278946266 node_paths=PackedStringArray("tilemap", "tabs", "tiles")]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_styles/panel = SubResource("StyleBoxFlat_ux1dr")
+vertical_scroll_mode = 0
+script = ExtResource("6_8ctag")
+tilemap = NodePath("../../../../Game/Tiles/TileViewport/TileMap")
+tabs = [NodePath("../TabMenu/StructureTab"), NodePath("../TabMenu/FunctionalTab"), NodePath("../TabMenu/DecorativeTab"), NodePath("../TabMenu/EnemiesTab"), NodePath("../TabMenu/GameplayTab")]
+tiles = NodePath("TileMargins/Tiles")
+
+[node name="TileMargins" type="MarginContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects/Objects" unique_id=1967634059]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 50
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 50
+
+[node name="Tiles" type="HFlowContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects/Objects/TileMargins" unique_id=2143448416]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 6
+alignment = 1
 
 [node name="EndTurnMenu" type="PanelContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=2017009980]
 texture_filter = 1

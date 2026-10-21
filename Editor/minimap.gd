@@ -23,7 +23,6 @@ func _ready() -> void:
 	camera.zoom = Vector2(target_zoom, target_zoom)
 
 func _unhandled_input(event: InputEvent) -> void:
-	print(event)
 	if event is InputEventMouseButton or event is InputEventMouseMotion and event.button_mask == MOUSE_BUTTON_LEFT:
 		var map_ratio: float = event.position.x / viewport.size.x
 		var map_distance: int = round(tilemap.camera.limit_right * map_ratio)

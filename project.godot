@@ -19,6 +19,10 @@ boot_splash/image="uid://dualyqc6newwa"
 config/icon="uid://dualyqc6newwa"
 config/windows_native_icon="res://icon.ico"
 
+[autoload]
+
+Game="*uid://bicybdkrni2xk"
+
 [display]
 
 window/size/viewport_width=1920
