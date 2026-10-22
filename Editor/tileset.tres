@@ -166,12 +166,24 @@ texture = ExtResource("2_x7ine")
 10:4/0 = 0
 11:4/0 = 0
 
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_x7ine"]
+resource_name = "Functional"
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_swis3"]
+resource_name = "Enemies"
+
+[sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_w26o1"]
+resource_name = "Gameplay"
+
 [resource]
 physics_layer_0/collision_layer = 1
 physics_layer_1/collision_layer = 2
 physics_layer_1/collision_priority = 2.0
 sources/0 = SubResource("TileSetAtlasSource_o8ses")
 sources/1 = SubResource("TileSetAtlasSource_dr71h")
+sources/2 = SubResource("TileSetScenesCollectionSource_x7ine")
+sources/3 = SubResource("TileSetScenesCollectionSource_swis3")
+sources/4 = SubResource("TileSetScenesCollectionSource_w26o1")
 pattern_0 = SubResource("TileMapPattern_nr6lb")
 pattern_1 = SubResource("TileMapPattern_x7ine")
 pattern_2 = SubResource("TileMapPattern_05gf2")

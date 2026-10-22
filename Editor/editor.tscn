@@ -95,8 +95,8 @@ theme = ExtResource("1_54esn")
 text = "END"
 
 [node name="Game" type="Control" parent="UserInterface" unique_id=87351302]
-custom_minimum_size = Vector2(0, 719)
-custom_maximum_size = Vector2(-1, 719)
+custom_minimum_size = Vector2(0, 720)
+custom_maximum_size = Vector2(-1, 720)
 layout_mode = 2
 
 [node name="Tiles" type="SubViewportContainer" parent="UserInterface/Game" unique_id=853837488]
@@ -116,7 +116,7 @@ transparent_bg = true
 handle_input_locally = false
 canvas_item_default_texture_filter = 0
 canvas_cull_mask = 4294967283
-size = Vector2i(1920, 719)
+size = Vector2i(1920, 720)
 render_target_update_mode = 4
 
 [node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 instance=ExtResource("3_o8ses")]

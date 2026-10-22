@@ -12,7 +12,6 @@ var tab_by_title: Dictionary[String, Button] # Maps the string title of a tilese
 var tab: String # active tab
 
 func _ready() -> void:
-	
 	for i in tileset.get_source_count():
 		var source: TileSetSource = tileset.get_source(i)
 		tile_set_sources[source.resource_name.to_lower()] = i
@@ -25,7 +24,13 @@ func _ready() -> void:
 	placeables.resize(tileset.get_source_count()) # As many placeables categories as there are sources
 	for i in tileset.get_patterns_count():
 		var pattern: TileMapPattern = tileset.get_pattern(i)
-		placeables[pattern.get_cell_source_id(Vector2.ZERO)].append(i)
+		var cell_source: int = -1
+		for x in pattern.get_size().x:
+			for y in pattern.get_size().y:
+				cell_source = pattern.get_cell_source_id(Vector2(x, y))
+				if cell_source != -1: break
+			if cell_source != -1: break
+		placeables[cell_source].append(i)
 		
 	for tab_button: Button in tabs:
 		tab_button.button_down.connect(_tab_changed.bind(tab_button.text.to_lower()))
@@ -40,7 +45,7 @@ func _tab_changed(new_tab: String) -> void:
 	
 func re_render_placeables(new_tab: String = tab) -> void:
 	var new_placeables: Array = placeables[tile_set_sources[new_tab.to_lower()]] # Array[int]
-	var source: TileSetAtlasSource = tileset.get_source(tile_set_sources[new_tab.to_lower()])
+	var source = tileset.get_source(tile_set_sources[new_tab.to_lower()])
 	var tile_size_rect: Rect2i = Rect2i(0, 0, tileset.tile_size.x, tileset.tile_size.y)
 	for child in tiles.get_children():
 		child.queue_free()
@@ -48,13 +53,15 @@ func re_render_placeables(new_tab: String = tab) -> void:
 		var placeable: TileMapPattern = tileset.get_pattern(placeable_index)
 		var _size: Vector2i = placeable.get_size()
 		var image: Image = Image.create(_size.x * tileset.tile_size.x, _size.y * tileset.tile_size.y, false, Image.FORMAT_RGBA8)
-		for x in _size.x:
-			for y in _size.y:
-				var tile_coords: Vector2i = placeable.get_cell_atlas_coords(Vector2i(x, y))
-				var region: Rect2i = source.get_tile_texture_region(tile_coords)
-				var cell_image: Image = source.texture.get_image()
-				image.blit_rect(cell_image.get_region(region), tile_size_rect, Vector2i(x * tileset.tile_size.x, y * tileset.tile_size.y))
-				
+		if source is TileSetAtlasSource:
+			for x in _size.x:
+				for y in _size.y:
+					var tile_coords: Vector2i = placeable.get_cell_atlas_coords(Vector2i(x, y))
+					var region: Rect2i = source.get_tile_texture_region(tile_coords)
+					var cell_image: Image = source.texture.get_image()
+					image.blit_rect(cell_image.get_region(region), tile_size_rect, Vector2i(x * tileset.tile_size.x, y * tileset.tile_size.y))
+		else:
+			pass # grab the image from the scene later
 				
 		var texture: ImageTexture = ImageTexture.create_from_image(image)
 		var texture_rect: TextureRect = TextureRect.new()
