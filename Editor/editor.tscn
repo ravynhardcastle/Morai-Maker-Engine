@@ -95,8 +95,8 @@ theme = ExtResource("1_54esn")
 text = "END"
 
 [node name="Game" type="Control" parent="UserInterface" unique_id=87351302]
-custom_minimum_size = Vector2(0, 720)
-custom_maximum_size = Vector2(-1, 720)
+custom_minimum_size = Vector2(0, 719)
+custom_maximum_size = Vector2(-1, 719)
 layout_mode = 2
 
 [node name="Tiles" type="SubViewportContainer" parent="UserInterface/Game" unique_id=853837488]
@@ -106,6 +106,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_bottom = -1.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -114,8 +115,8 @@ disable_3d = true
 transparent_bg = true
 handle_input_locally = false
 canvas_item_default_texture_filter = 0
-canvas_cull_mask = 4294967291
-size = Vector2i(1920, 720)
+canvas_cull_mask = 4294967283
+size = Vector2i(1920, 719)
 render_target_update_mode = 4
 
 [node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 instance=ExtResource("3_o8ses")]
@@ -167,11 +168,12 @@ stretch = true
 disable_3d = true
 transparent_bg = true
 handle_input_locally = false
-canvas_cull_mask = 4294967293
+canvas_cull_mask = 4294967285
 size = Vector2i(456, 228)
 render_target_update_mode = 4
 
 [node name="Camera" type="Camera2D" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer/MinimapRender" unique_id=979148093]
+offset = Vector2(0, 400)
 
 [node name="Objects" type="VBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=1623881114]
 layout_mode = 2
@@ -230,6 +232,7 @@ script = ExtResource("6_8ctag")
 tilemap = NodePath("../../../../Game/Tiles/TileViewport/TileMap")
 tabs = [NodePath("../TabMenu/StructureTab"), NodePath("../TabMenu/FunctionalTab"), NodePath("../TabMenu/DecorativeTab"), NodePath("../TabMenu/EnemiesTab"), NodePath("../TabMenu/GameplayTab")]
 tiles = NodePath("TileMargins/Tiles")
+tile_scale = 3
 
 [node name="TileMargins" type="MarginContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects/Objects" unique_id=1967634059]
 layout_mode = 2
@@ -240,12 +243,12 @@ theme_override_constants/margin_top = 50
 theme_override_constants/margin_right = 50
 theme_override_constants/margin_bottom = 50
 
-[node name="Tiles" type="HFlowContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects/Objects/TileMargins" unique_id=2143448416]
+[node name="Tiles" type="HBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects/Objects/TileMargins" unique_id=524346598]
 texture_filter = 1
 layout_mode = 2
-size_flags_horizontal = 3
+size_flags_horizontal = 0
 size_flags_vertical = 6
-alignment = 1
+theme_override_constants/separation = 40
 
 [node name="EndTurnMenu" type="PanelContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=2017009980]
 texture_filter = 1
