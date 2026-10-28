@@ -1,0 +1,29 @@
+[gd_scene format=3 uid="uid://cuux17xypu6fe"]
+
+[ext_resource type="Script" uid="uid://bp83i5yla8jvl" path="res://Tiles/tile.gd" id="1_71op4"]
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_ux1dr"]
+animations = [{
+"frames": [],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ux1dr"]
+size = Vector2(16, 16)
+
+[node name="Tile" type="Node2D" unique_id=151469405 node_paths=PackedStringArray("sprite")]
+script = ExtResource("1_71op4")
+sprite = NodePath("Sprite")
+
+[node name="Sprite" type="AnimatedSprite2D" parent="." unique_id=592103259]
+texture_filter = 1
+sprite_frames = SubResource("SpriteFrames_ux1dr")
+animation = &"idle"
+autoplay = "idle"
+
+[node name="Area2D" type="Area2D" parent="." unique_id=61478421]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=440782324]
+shape = SubResource("RectangleShape2D_ux1dr")

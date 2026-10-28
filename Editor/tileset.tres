@@ -2,6 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://c6j4k0e0jex1c" path="res://Assets/Sprites/StructureAtlas.png" id="1_nr6lb"]
 [ext_resource type="Texture2D" uid="uid://b6jgb5imbinyi" path="res://Assets/Sprites/DecorativeAtlas.png" id="2_x7ine"]
+[ext_resource type="PackedScene" uid="uid://c7ysxkldf1cm" path="res://Tiles/coin.tscn" id="3_swis3"]
 
 [sub_resource type="TileMapPattern" id="TileMapPattern_nr6lb"]
 tile_data = PackedInt32Array(0, 65536, 1)
@@ -56,6 +57,9 @@ tile_data = PackedInt32Array(131072, 1, 2, 196608, 1, 3, 262144, 1, 4, 1, 65537,
 
 [sub_resource type="TileMapPattern" id="TileMapPattern_j1gye"]
 tile_data = PackedInt32Array(0, 327681, 4, 1, 327681, 4)
+
+[sub_resource type="TileMapPattern" id="TileMapPattern_dr71h"]
+tile_data = PackedInt32Array(0, 2, 131072)
 
 [sub_resource type="TileMapPattern" id="TileMapPattern_dk5ak"]
 tile_data = PackedInt32Array(0, 262144, 1, 1, 327680, 1)
@@ -168,6 +172,7 @@ texture = ExtResource("2_x7ine")
 
 [sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_x7ine"]
 resource_name = "Functional"
+scenes/2/scene = ExtResource("3_swis3")
 
 [sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_swis3"]
 resource_name = "Enemies"
@@ -209,3 +214,4 @@ pattern_21 = SubResource("TileMapPattern_2iu5j")
 pattern_22 = SubResource("TileMapPattern_xk7m3")
 pattern_23 = SubResource("TileMapPattern_p0ocm")
 pattern_24 = SubResource("TileMapPattern_j1gye")
+pattern_25 = SubResource("TileMapPattern_dr71h")

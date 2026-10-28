@@ -7,7 +7,7 @@ extends ScrollContainer
 @onready var layers: Array[TileMapLayer] = tilemap.layers
 @onready var tileset: TileSet = tilemap.fg_layer.tile_set # The tile set is the same among all layers
 var tile_set_sources: Dictionary[String, int]
-var placeables: Array[Array] # Array[Array[int]], int corresponse to tilesetsource, inner int is pattern id
+var placeables: Array[Array] # Array[Array[int]], int corresponds to tilesetsource, inner int is pattern id
 var tab_by_title: Dictionary[String, Button] # Maps the string title of a tilesetsource to a button
 var tab: String # active tab
 
@@ -27,6 +27,7 @@ func _ready() -> void:
 		var cell_source: int = -1
 		for x in pattern.get_size().x:
 			for y in pattern.get_size().y:
+				if !pattern.has_cell(Vector2(x, y)): continue
 				cell_source = pattern.get_cell_source_id(Vector2(x, y))
 				if cell_source != -1: break
 			if cell_source != -1: break
@@ -60,8 +61,14 @@ func re_render_placeables(new_tab: String = tab) -> void:
 					var region: Rect2i = source.get_tile_texture_region(tile_coords)
 					var cell_image: Image = source.texture.get_image()
 					image.blit_rect(cell_image.get_region(region), tile_size_rect, Vector2i(x * tileset.tile_size.x, y * tileset.tile_size.y))
-		else:
-			pass # grab the image from the scene later
+		elif source is TileSetScenesCollectionSource:
+			# For now, making an assumption that scene placeables will be one tile (that is the scene)
+			# More complicated logic needed if this assumption is violated
+			var source_id: int = placeable.get_cell_source_id(Vector2.ZERO)
+			var tile: Tile = source.get_scene_tile_scene(source_id).instantiate()
+			add_child(tile) # initiate it so we can get the image
+			image = tile.image
+			tile.queue_free() # i don't wanna play with you anymore...
 				
 		var texture: ImageTexture = ImageTexture.create_from_image(image)
 		var texture_rect: TextureRect = TextureRect.new()

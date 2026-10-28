@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://c7ysxkldf1cm"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_2gos2"]
+[ext_resource type="Texture2D" uid="uid://c2nk35w2vn1tt" path="res://Assets/Sprites/Functional/coin.png" id="2_qgt21"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_q25yl"]
+atlas = ExtResource("2_qgt21")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0fqe7"]
+atlas = ExtResource("2_qgt21")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_0v85o"]
+atlas = ExtResource("2_qgt21")
+region = Rect2(32, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_57efr"]
+atlas = ExtResource("2_qgt21")
+region = Rect2(48, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_djtam"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q25yl")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0fqe7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_0v85o")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_57efr")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[node name="Coin" unique_id=151469405 instance=ExtResource("1_2gos2")]
+
+[node name="Sprite" parent="." index="0" unique_id=592103259]
+sprite_frames = SubResource("SpriteFrames_djtam")
+frame_progress = 0.028452495
