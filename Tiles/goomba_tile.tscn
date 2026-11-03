@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://c6sx57i7qt0bj"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_lwl40"]
+[ext_resource type="Texture2D" uid="uid://dufg34awnuv6n" path="res://Assets/Sprites/Enemy/goomba.png" id="2_o31ks"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lwl40"]
+atlas = ExtResource("2_o31ks")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_o31ks"]
+atlas = ExtResource("2_o31ks")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_24wj0"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lwl40")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_o31ks")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 6.0
+}]
+
+[node name="GoombaTile" unique_id=1217813908 instance=ExtResource("1_lwl40")]
+
+[node name="Sprite" parent="." index="1" unique_id=592103259]
+sprite_frames = SubResource("SpriteFrames_24wj0")
+frame_progress = 0.5985367

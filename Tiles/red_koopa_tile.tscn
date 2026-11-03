@@ -1,0 +1,48 @@
+[gd_scene format=3 uid="uid://1p1cptogkifk"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_ba2oc"]
+[ext_resource type="Texture2D" uid="uid://bierp8y45grqn" path="res://Assets/Sprites/Enemy/redkoopa.png" id="2_j4m4h"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ukfhj"]
+size = Vector2(16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ba2oc"]
+atlas = ExtResource("2_j4m4h")
+region = Rect2(0, 0, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_j4m4h"]
+atlas = ExtResource("2_j4m4h")
+region = Rect2(16, 0, 16, 24)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_jfmk2"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ba2oc")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_j4m4h")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 6.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_vswpd"]
+size = Vector2(16, 24)
+
+[node name="RedKoopaTile" unique_id=1217813908 instance=ExtResource("1_ba2oc")]
+
+[node name="Collision" parent="." index="0" unique_id=440782324]
+position = Vector2(0, -4)
+shape = SubResource("RectangleShape2D_ukfhj")
+
+[node name="Sprite" parent="." index="1" unique_id=592103259]
+position = Vector2(0, -4)
+sprite_frames = SubResource("SpriteFrames_jfmk2")
+
+[node name="HitDetection" parent="." index="2" unique_id=1326608021]
+position = Vector2(0, -4)
+
+[node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
+shape = SubResource("RectangleShape2D_vswpd")

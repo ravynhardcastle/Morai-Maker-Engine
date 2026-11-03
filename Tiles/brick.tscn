@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://drqx78jeidlv0"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_xk1eo"]
+[ext_resource type="Texture2D" uid="uid://b4do7ioow5apf" path="res://Assets/Sprites/Functional/brick.png" id="2_jcl85"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_18cre"]
+atlas = ExtResource("2_jcl85")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_boyel"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_18cre")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[node name="Brick" unique_id=1217813908 instance=ExtResource("1_xk1eo")]
+
+[node name="Sprite" parent="." index="1" unique_id=592103259]
+sprite_frames = SubResource("SpriteFrames_boyel")

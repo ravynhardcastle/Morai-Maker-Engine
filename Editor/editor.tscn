@@ -177,6 +177,7 @@ render_target_update_mode = 4
 offset = Vector2(0, 400)
 
 [node name="Objects" type="VBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=1623881114]
+custom_maximum_size = Vector2(-1, 228)
 layout_mode = 2
 size_flags_horizontal = 3
 

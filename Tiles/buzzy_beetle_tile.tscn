@@ -1,0 +1,31 @@
+[gd_scene format=3 uid="uid://dmo0l5yhx15j1"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_dt2x8"]
+[ext_resource type="Texture2D" uid="uid://dw0igdqkhuqyt" path="res://Assets/Sprites/Enemy/buzzybeetle.png" id="2_pidsb"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7mtbr"]
+atlas = ExtResource("2_pidsb")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_qsk7i"]
+atlas = ExtResource("2_pidsb")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_qd2u5"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7mtbr")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_qsk7i")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 6.0
+}]
+
+[node name="BuzzyBeetleTile" unique_id=1217813908 instance=ExtResource("1_dt2x8")]
+
+[node name="Sprite" parent="." index="1" unique_id=592103259]
+sprite_frames = SubResource("SpriteFrames_qd2u5")

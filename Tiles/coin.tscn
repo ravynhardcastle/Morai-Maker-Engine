@@ -22,13 +22,13 @@ region = Rect2(48, 0, 16, 16)
 [sub_resource type="SpriteFrames" id="SpriteFrames_djtam"]
 animations = [{
 "frames": [{
-"duration": 1.0,
+"duration": 10.0,
 "texture": SubResource("AtlasTexture_q25yl")
 }, {
-"duration": 1.0,
+"duration": 2.0,
 "texture": SubResource("AtlasTexture_0fqe7")
 }, {
-"duration": 1.0,
+"duration": 2.0,
 "texture": SubResource("AtlasTexture_0v85o")
 }, {
 "duration": 1.0,
@@ -36,11 +36,11 @@ animations = [{
 }],
 "loop": 1,
 "name": &"idle",
-"speed": 5.0
+"speed": 15.0
 }]
 
 [node name="Coin" unique_id=151469405 instance=ExtResource("1_2gos2")]
 
-[node name="Sprite" parent="." index="0" unique_id=592103259]
+[node name="Sprite" parent="." index="1" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_djtam")
-frame_progress = 0.028452495
+frame_progress = 0.94885755

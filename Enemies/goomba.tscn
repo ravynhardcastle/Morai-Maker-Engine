@@ -1,0 +1,44 @@
+[gd_scene format=3 uid="uid://dqy3hshi0kyb4"]
+
+[ext_resource type="PackedScene" uid="uid://47ui5sbcprhk" path="res://Enemies/enemy.tscn" id="1_vd7un"]
+[ext_resource type="Texture2D" uid="uid://dufg34awnuv6n" path="res://Assets/Sprites/Enemy/goomba.png" id="2_8xqe6"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_8af7h"]
+atlas = ExtResource("2_8xqe6")
+region = Rect2(32, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ne60a"]
+atlas = ExtResource("2_8xqe6")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7j8h5"]
+atlas = ExtResource("2_8xqe6")
+region = Rect2(16, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_svqi0"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_8af7h")
+}],
+"loop": 1,
+"name": &"squish",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ne60a")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7j8h5")
+}],
+"loop": 1,
+"name": &"walk",
+"speed": 6.0
+}]
+
+[node name="Goomba" unique_id=15228135 instance=ExtResource("1_vd7un")]
+
+[node name="Sprite" parent="." index="1" unique_id=851202686]
+sprite_frames = SubResource("SpriteFrames_svqi0")
+animation = &"walk"

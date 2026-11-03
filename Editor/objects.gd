@@ -64,8 +64,9 @@ func re_render_placeables(new_tab: String = tab) -> void:
 		elif source is TileSetScenesCollectionSource:
 			# For now, making an assumption that scene placeables will be one tile (that is the scene)
 			# More complicated logic needed if this assumption is violated
-			var source_id: int = placeable.get_cell_source_id(Vector2.ZERO)
-			var tile: Tile = source.get_scene_tile_scene(source_id).instantiate()
+			var tile_id: int = placeable.get_cell_alternative_tile(Vector2.ZERO)
+			print(tile_id)
+			var tile: Tile = source.get_scene_tile_scene(tile_id).instantiate()
 			add_child(tile) # initiate it so we can get the image
 			image = tile.image
 			tile.queue_free() # i don't wanna play with you anymore...
