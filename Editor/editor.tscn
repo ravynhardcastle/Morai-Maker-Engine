@@ -235,6 +235,7 @@ tilemap = NodePath("../../../../Game/Tiles/TileViewport/TileMap")
 tabs = [NodePath("../TabMenu/StructureTab"), NodePath("../TabMenu/FunctionalTab"), NodePath("../TabMenu/DecorativeTab"), NodePath("../TabMenu/EnemiesTab"), NodePath("../TabMenu/GameplayTab")]
 tiles = NodePath("TileMargins/Tiles")
 tile_scale = 3
+outline_padding = 3
 
 [node name="TileMargins" type="MarginContainer" parent="UserInterface/BottomContainer/BottomDisplay/Objects/Objects" unique_id=1967634059]
 layout_mode = 2

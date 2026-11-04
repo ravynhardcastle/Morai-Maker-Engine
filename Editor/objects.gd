@@ -4,8 +4,10 @@ extends ScrollContainer
 @export var tabs: Array[Button]
 @export var tiles: HBoxContainer
 @export var tile_scale: int
+@export var outline_padding: int # padding for the outline shader
 @onready var layers: Array[TileMapLayer] = tilemap.layers
 @onready var tileset: TileSet = tilemap.fg_layer.tile_set # The tile set is the same among all layers
+@onready var editor_tile: PackedScene = preload("res://Tiles/editor_tile.tscn")
 var tile_set_sources: Dictionary[String, int]
 var placeables: Array[Array] # Array[Array[int]], int corresponds to tilesetsource, inner int is pattern id
 var tab_by_title: Dictionary[String, Button] # Maps the string title of a tilesetsource to a button
@@ -39,6 +41,7 @@ func _ready() -> void:
 	re_render_placeables()
 		
 func _tab_changed(new_tab: String) -> void:
+	if tab == new_tab: return
 	tab = new_tab
 	for tab_button: Button in tabs:
 		tab_button.set_pressed_no_signal(false) # Including the tab we're managing, since it sets to true after
@@ -70,20 +73,18 @@ func re_render_placeables(new_tab: String = tab) -> void:
 			image = tile.image
 			tile.queue_free() # i don't wanna play with you anymore...
 				
+		image = pad_image(image)
 		var texture: ImageTexture = ImageTexture.create_from_image(image)
-		var texture_rect: TextureRect = TextureRect.new()
-		texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-		texture_rect.size_flags_horizontal = SIZE_EXPAND_FILL
-		texture_rect.size_flags_vertical = SIZE_EXPAND_FILL
-		texture_rect.offset_transform_enabled = true
-		texture_rect.offset_transform_scale = Vector2(tile_scale, tile_scale)
-		texture_rect.texture = texture
-		texture_rect.custom_minimum_size.x = texture.get_size().x * tile_scale
-		texture_rect.custom_maximum_size.x = texture.get_size().x * tile_scale
-		texture_rect.custom_minimum_size.y = tileset.tile_size.x * tile_scale
-		texture_rect.custom_maximum_size.y = tileset.tile_size.y * tile_scale
-		tiles.add_child(texture_rect)
+		var curr_tile: EditorTile = editor_tile.instantiate()
+		curr_tile.init(texture, tileset.tile_size, tile_scale)
+		tiles.add_child(curr_tile)
 		
-		var available_height: float = size.y - get_h_scroll_bar().get_combined_minimum_size().y
+		var available_height: float = size.y - get_h_scroll_bar().get_combined_minimum_size().y + outline_padding * 2 * tile_scale
 		var fit_scale: float = clamp(floor(available_height / image.get_height()), 1.0, 3.0)
-		texture_rect.offset_transform_scale = Vector2(fit_scale, fit_scale)
+		curr_tile.offset_transform_scale = Vector2(fit_scale, fit_scale)
+
+
+func pad_image(src: Image) -> Image:
+	var padded := Image.create(src.get_width() + outline_padding * 2, src.get_height() + outline_padding * 2, false, Image.FORMAT_RGBA8)
+	padded.blit_rect(src, Rect2i(Vector2i.ZERO, src.get_size()), Vector2i(outline_padding, outline_padding))
+	return padded
