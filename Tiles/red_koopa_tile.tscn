@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://bierp8y45grqn" path="res://Assets/Sprites/Enemy/redkoopa.png" id="2_j4m4h"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ukfhj"]
-size = Vector2(16, 24)
+size = Vector2(16, 16)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_ba2oc"]
 atlas = ExtResource("2_j4m4h")
@@ -29,12 +29,11 @@ animations = [{
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_vswpd"]
-size = Vector2(16, 24)
+size = Vector2(16, 16)
 
 [node name="RedKoopaTile" unique_id=1217813908 instance=ExtResource("1_ba2oc")]
 
 [node name="Collision" parent="." index="0" unique_id=440782324]
-position = Vector2(0, -4)
 shape = SubResource("RectangleShape2D_ukfhj")
 
 [node name="Sprite" parent="." index="1" unique_id=592103259]
@@ -45,4 +44,5 @@ sprite_frames = SubResource("SpriteFrames_jfmk2")
 position = Vector2(0, -4)
 
 [node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
+position = Vector2(0, 4)
 shape = SubResource("RectangleShape2D_vswpd")

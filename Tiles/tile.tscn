@@ -2,9 +2,6 @@
 
 [ext_resource type="Script" uid="uid://bp83i5yla8jvl" path="res://Tiles/tile.gd" id="1_71op4"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_ux1dr"]
-size = Vector2(16, 16)
-
 [sub_resource type="SpriteFrames" id="SpriteFrames_ux1dr"]
 animations = [{
 "frames": [],
@@ -13,13 +10,13 @@ animations = [{
 "speed": 5.0
 }]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ux1dr"]
+size = Vector2(16, 16)
+
 [node name="Tile" type="StaticBody2D" unique_id=1217813908 node_paths=PackedStringArray("sprite")]
 visibility_layer = 17
 script = ExtResource("1_71op4")
 sprite = NodePath("Sprite")
-
-[node name="Collision" type="CollisionShape2D" parent="." unique_id=440782324]
-shape = SubResource("RectangleShape2D_ux1dr")
 
 [node name="Sprite" type="AnimatedSprite2D" parent="." unique_id=592103259]
 visibility_layer = 17
@@ -31,4 +28,8 @@ autoplay = "idle"
 [node name="HitDetection" type="Area2D" parent="." unique_id=1326608021]
 
 [node name="Collider" type="CollisionShape2D" parent="HitDetection" unique_id=255896861]
+shape = SubResource("RectangleShape2D_ux1dr")
+debug_color = Color(0.98, 0, 0.35933346, 0.5019608)
+
+[node name="Collision" type="CollisionShape2D" parent="." unique_id=440782324]
 shape = SubResource("RectangleShape2D_ux1dr")

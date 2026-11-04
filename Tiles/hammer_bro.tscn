@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://blegwqxr5lc1"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_jxkte"]
+[ext_resource type="Texture2D" uid="uid://bpdlhvybx6n1r" path="res://Assets/Sprites/Enemy/hammerbro.png" id="2_n16kj"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_808pf"]
+atlas = ExtResource("2_n16kj")
+region = Rect2(0, 0, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_y7vqa"]
+atlas = ExtResource("2_n16kj")
+region = Rect2(16, 0, 16, 24)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_atugf"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_808pf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_y7vqa")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 6.0
+}]
+
+[node name="HammerBro" unique_id=1217813908 instance=ExtResource("1_jxkte")]
+
+[node name="Sprite" parent="." index="1" unique_id=592103259]
+position = Vector2(0, -4)
+sprite_frames = SubResource("SpriteFrames_atugf")

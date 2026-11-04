@@ -249,7 +249,8 @@ theme_override_constants/margin_bottom = 50
 texture_filter = 1
 layout_mode = 2
 size_flags_horizontal = 0
-size_flags_vertical = 6
+size_flags_vertical = 4
+size_flags_stretch_ratio = 0.0
 theme_override_constants/separation = 40
 
 [node name="EndTurnMenu" type="PanelContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=2017009980]

@@ -1,0 +1,38 @@
+[gd_scene format=3 uid="uid://b6ud3wtwxvr3m"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_8tvi2"]
+[ext_resource type="Texture2D" uid="uid://h0et3745s2t0" path="res://Assets/Sprites/Gameplay/flagpole.png" id="2_0neyg"]
+[ext_resource type="Texture2D" uid="uid://dr0g3g6wrr32a" path="res://Assets/Sprites/Gameplay/flag.png" id="3_vgjrm"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d44px"]
+atlas = ExtResource("2_0neyg")
+region = Rect2(0, 0, 16, 176)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_eon3y"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d44px")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kj4na"]
+size = Vector2(16, 176)
+
+[node name="FlagPole" unique_id=1217813908 instance=ExtResource("1_8tvi2")]
+
+[node name="Sprite" parent="." index="0" unique_id=592103259]
+position = Vector2(0, -80)
+sprite_frames = SubResource("SpriteFrames_eon3y")
+
+[node name="Flag" type="Sprite2D" parent="." index="1" unique_id=2059278532]
+texture_filter = 1
+position = Vector2(-8, -143)
+texture = ExtResource("3_vgjrm")
+
+[node name="Collider" parent="HitDetection" parent_id_path=PackedInt32Array(1326608021) index="0" unique_id=255896861]
+position = Vector2(0, -80)
+shape = SubResource("RectangleShape2D_kj4na")

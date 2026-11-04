@@ -65,7 +65,6 @@ func re_render_placeables(new_tab: String = tab) -> void:
 			# For now, making an assumption that scene placeables will be one tile (that is the scene)
 			# More complicated logic needed if this assumption is violated
 			var tile_id: int = placeable.get_cell_alternative_tile(Vector2.ZERO)
-			print(tile_id)
 			var tile: Tile = source.get_scene_tile_scene(tile_id).instantiate()
 			add_child(tile) # initiate it so we can get the image
 			image = tile.image
@@ -81,4 +80,10 @@ func re_render_placeables(new_tab: String = tab) -> void:
 		texture_rect.texture = texture
 		texture_rect.custom_minimum_size.x = texture.get_size().x * tile_scale
 		texture_rect.custom_maximum_size.x = texture.get_size().x * tile_scale
+		texture_rect.custom_minimum_size.y = tileset.tile_size.x * tile_scale
+		texture_rect.custom_maximum_size.y = tileset.tile_size.y * tile_scale
 		tiles.add_child(texture_rect)
+		
+		var available_height: float = size.y - get_h_scroll_bar().get_combined_minimum_size().y
+		var fit_scale: float = clamp(floor(available_height / image.get_height()), 1.0, 3.0)
+		texture_rect.offset_transform_scale = Vector2(fit_scale, fit_scale)

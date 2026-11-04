@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://cvk3axijtrvfg"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_uvhh0"]
+[ext_resource type="Texture2D" uid="uid://c4dfg3i43bis" path="res://Assets/Sprites/Gameplay/smallmario.png" id="2_kwp1u"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d02wl"]
+atlas = ExtResource("2_kwp1u")
+region = Rect2(0, 0, 16, 16)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_lv4nj"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d02wl")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[node name="MarioTile" unique_id=1217813908 instance=ExtResource("1_uvhh0")]
+
+[node name="Sprite" parent="." index="0" unique_id=592103259]
+sprite_frames = SubResource("SpriteFrames_lv4nj")

@@ -1,0 +1,40 @@
+[gd_scene format=3 uid="uid://dyd18ulns72qh"]
+
+[ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_hu4xk"]
+[ext_resource type="Texture2D" uid="uid://blgs40brfnwdn" path="res://Assets/Sprites/Enemy/piranhaplant.png" id="2_r2uc8"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_aeqc2"]
+atlas = ExtResource("2_r2uc8")
+region = Rect2(0, 0, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e0shx"]
+atlas = ExtResource("2_r2uc8")
+region = Rect2(16, 0, 16, 24)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_8juyg"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_aeqc2")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_e0shx")
+}],
+"loop": 1,
+"name": &"idle",
+"speed": 6.0
+}]
+
+[node name="PiranhaPlant" unique_id=1217813908 instance=ExtResource("1_hu4xk")]
+
+[node name="Collision" parent="." index="0" unique_id=440782324]
+position = Vector2(8, 0)
+
+[node name="Sprite" parent="." index="1" unique_id=592103259]
+position = Vector2(8, -4)
+sprite_frames = SubResource("SpriteFrames_8juyg")
+frame = 1
+frame_progress = 0.6482616
+
+[node name="HitDetection" parent="." index="2" unique_id=1326608021]
+position = Vector2(8, 0)

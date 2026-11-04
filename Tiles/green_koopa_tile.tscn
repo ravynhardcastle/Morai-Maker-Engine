@@ -4,7 +4,7 @@
 [ext_resource type="Texture2D" uid="uid://cg5r5a1p7qcfi" path="res://Assets/Sprites/Enemy/greenkoopa.png" id="2_eqqdi"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_18o10"]
-size = Vector2(16, 24)
+size = Vector2(16, 16)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_8ijy3"]
 atlas = ExtResource("2_eqqdi")
@@ -29,12 +29,11 @@ animations = [{
 }]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_0ev78"]
-size = Vector2(16, 24)
+size = Vector2(16, 16)
 
 [node name="GreenKoopaTile" unique_id=1217813908 instance=ExtResource("1_8ijy3")]
 
 [node name="Collision" parent="." index="0" unique_id=440782324]
-position = Vector2(0, -4)
 shape = SubResource("RectangleShape2D_18o10")
 
 [node name="Sprite" parent="." index="1" unique_id=592103259]
@@ -46,4 +45,5 @@ frame_progress = 0.41057438
 position = Vector2(0, -4)
 
 [node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
+position = Vector2(0, 4)
 shape = SubResource("RectangleShape2D_0ev78")

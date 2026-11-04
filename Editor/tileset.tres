@@ -15,6 +15,10 @@
 [ext_resource type="PackedScene" uid="uid://dmo0l5yhx15j1" path="res://Tiles/buzzy_beetle_tile.tscn" id="13_r0gix"]
 [ext_resource type="PackedScene" uid="uid://dhn6juyysp7ab" path="res://Tiles/spiny_tile.tscn" id="14_e6rkv"]
 [ext_resource type="PackedScene" uid="uid://dny3pm1p5pn0k" path="res://Tiles/lakitu_tile.tscn" id="15_ec1ks"]
+[ext_resource type="PackedScene" uid="uid://dyd18ulns72qh" path="res://Tiles/piranha_plant.tscn" id="16_nw0hx"]
+[ext_resource type="PackedScene" uid="uid://cvk3axijtrvfg" path="res://Tiles/mario_tile.tscn" id="16_xvu7h"]
+[ext_resource type="PackedScene" uid="uid://blegwqxr5lc1" path="res://Tiles/hammer_bro.tscn" id="17_41ut8"]
+[ext_resource type="PackedScene" uid="uid://b6ud3wtwxvr3m" path="res://Tiles/flag_pole.tscn" id="19_x7lr6"]
 
 [sub_resource type="TileMapPattern" id="TileMapPattern_nr6lb"]
 tile_data = PackedInt32Array(0, 65536, 1)
@@ -112,8 +116,20 @@ tile_data = PackedInt32Array(0, 3, 327680)
 [sub_resource type="TileMapPattern" id="TileMapPattern_fg2kp"]
 tile_data = PackedInt32Array(0, 3, 393216)
 
+[sub_resource type="TileMapPattern" id="TileMapPattern_uscbn"]
+tile_data = PackedInt32Array(0, 3, 458752)
+
+[sub_resource type="TileMapPattern" id="TileMapPattern_o4d4g"]
+tile_data = PackedInt32Array(0, 3, 589824)
+
 [sub_resource type="TileMapPattern" id="TileMapPattern_7yob2"]
 tile_data = PackedInt32Array(0, 196608, 0, 65536, 196608, 1)
+
+[sub_resource type="TileMapPattern" id="TileMapPattern_lx7j8"]
+tile_data = PackedInt32Array(0, 4, 65536)
+
+[sub_resource type="TileMapPattern" id="TileMapPattern_u3xue"]
+tile_data = PackedInt32Array(0, 4, 131072)
 
 [sub_resource type="TileMapPattern" id="TileMapPattern_0qiiy"]
 tile_data = PackedInt32Array(0, 196608, 2)
@@ -236,9 +252,13 @@ scenes/3/scene = ExtResource("12_fb4cn")
 scenes/4/scene = ExtResource("13_r0gix")
 scenes/5/scene = ExtResource("14_e6rkv")
 scenes/6/scene = ExtResource("15_ec1ks")
+scenes/7/scene = ExtResource("16_nw0hx")
+scenes/9/scene = ExtResource("17_41ut8")
 
 [sub_resource type="TileSetScenesCollectionSource" id="TileSetScenesCollectionSource_w26o1"]
 resource_name = "Gameplay"
+scenes/1/scene = ExtResource("16_xvu7h")
+scenes/2/scene = ExtResource("19_x7lr6")
 
 [resource]
 physics_layer_0/collision_layer = 1
@@ -287,3 +307,7 @@ pattern_34 = SubResource("TileMapPattern_mk60y")
 pattern_35 = SubResource("TileMapPattern_lhs25")
 pattern_36 = SubResource("TileMapPattern_p6e64")
 pattern_37 = SubResource("TileMapPattern_fg2kp")
+pattern_38 = SubResource("TileMapPattern_uscbn")
+pattern_39 = SubResource("TileMapPattern_o4d4g")
+pattern_40 = SubResource("TileMapPattern_lx7j8")
+pattern_41 = SubResource("TileMapPattern_u3xue")
