@@ -32,7 +32,7 @@ size = Vector2(16, 16)
 size = Vector2(16, 16)
 
 [node name="RedKoopaTile" unique_id=1217813908 instance=ExtResource("1_ba2oc")]
-RLName = &"Koopa 2"
+rl_name = &"Koopa 2"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(0, -4)

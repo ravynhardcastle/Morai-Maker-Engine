@@ -26,7 +26,7 @@ animations = [{
 }]
 
 [node name="BuzzyBeetleTile" unique_id=1217813908 instance=ExtResource("1_dt2x8")]
-RLName = &"Hard Shell"
+rl_name = &"Hard Shell"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_qd2u5")

@@ -25,7 +25,7 @@ size = Vector2(16, 16)
 size = Vector2(16, 16)
 
 [node name="LakituTile" unique_id=1217813908 instance=ExtResource("1_vwq4w")]
-RLName = &"Lakitu"
+rl_name = &"Lakitu"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(0, -4)

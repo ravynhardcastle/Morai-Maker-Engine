@@ -29,7 +29,7 @@ animations = [{
 size = Vector2(32, 16)
 
 [node name="PiranhaPlant" unique_id=1217813908 instance=ExtResource("1_hu4xk")]
-RLName = &"Plant"
+rl_name = &"Plant"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(8, -4)

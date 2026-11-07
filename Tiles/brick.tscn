@@ -19,6 +19,7 @@ animations = [{
 }]
 
 [node name="Brick" unique_id=1217813908 instance=ExtResource("1_xk1eo")]
+rl_name = &"Block"
 
-[node name="Sprite" parent="." index="1" unique_id=592103259]
+[node name="Sprite" parent="." index="0" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_boyel")

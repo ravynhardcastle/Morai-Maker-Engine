@@ -19,7 +19,7 @@ animations = [{
 }]
 
 [node name="BillBlasterHead" unique_id=1217813908 instance=ExtResource("1_j0eh1")]
-RLName = &"SmallCannon"
+rl_name = &"SmallCannon"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_wk14j")

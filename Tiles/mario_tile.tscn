@@ -19,7 +19,7 @@ animations = [{
 }]
 
 [node name="MarioTile" unique_id=1217813908 instance=ExtResource("1_uvhh0")]
-RLName = &"Mario"
+rl_name = &"Mario"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_lv4nj")

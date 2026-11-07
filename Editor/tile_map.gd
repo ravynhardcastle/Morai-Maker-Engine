@@ -154,9 +154,10 @@ func generate_map() -> void:
 							objects_list.append(new_object.call(object_name, coords, layer_name))
 			elif source is TileSetScenesCollectionSource:
 				var info: Dictionary = get_scene_info(source, layer.get_cell_alternative_tile(coords))
+				if !info.name: return # Delete anything that we haven't given an RL name, because it's not in our database
 				for x in info.size.x:
 					for y in info.size.y:
-						add_to_grid.call(occupied_grid, coords + Vector2i(x, y), objects_list.size())
+						add_to_grid.call(occupied_grid, coords + Vector2i(x, -y), objects_list.size())
 				objects_list.append(new_object.call(info.name, coords, layer_name))
 				
 	# -2 here because of the boundaries; one in the negatives, one positive + 1

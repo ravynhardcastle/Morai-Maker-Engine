@@ -25,6 +25,7 @@ size = Vector2(48, 16)
 size = Vector2(48, 16)
 
 [node name="Lift" unique_id=1217813908 instance=ExtResource("1_akhoh")]
+rl_name = &"Bar"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(16, 0)

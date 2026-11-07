@@ -40,7 +40,7 @@ animations = [{
 }]
 
 [node name="Coin" unique_id=151469405 instance=ExtResource("1_2gos2")]
-RLName = &"Coin"
+rl_name = &"Coin"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_djtam")
