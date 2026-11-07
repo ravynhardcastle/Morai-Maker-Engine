@@ -13,10 +13,11 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ux1dr"]
 size = Vector2(16, 16)
 
-[node name="Tile" type="StaticBody2D" unique_id=1217813908 node_paths=PackedStringArray("sprite")]
+[node name="Tile" type="StaticBody2D" unique_id=1217813908 node_paths=PackedStringArray("sprite", "hit_detection")]
 visibility_layer = 17
 script = ExtResource("1_71op4")
 sprite = NodePath("Sprite")
+hit_detection = NodePath("HitDetection/Collider")
 
 [node name="Sprite" type="AnimatedSprite2D" parent="." unique_id=592103259]
 visibility_layer = 17

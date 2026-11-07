@@ -25,16 +25,23 @@ animations = [{
 "speed": 6.0
 }]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hu4xk"]
+size = Vector2(32, 16)
+
 [node name="PiranhaPlant" unique_id=1217813908 instance=ExtResource("1_hu4xk")]
+RLName = &"Plant"
 
-[node name="Collision" parent="." index="0" unique_id=440782324]
-position = Vector2(8, 0)
-
-[node name="Sprite" parent="." index="1" unique_id=592103259]
+[node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(8, -4)
 sprite_frames = SubResource("SpriteFrames_8juyg")
 frame = 1
 frame_progress = 0.6482616
 
-[node name="HitDetection" parent="." index="2" unique_id=1326608021]
+[node name="HitDetection" parent="." index="1" unique_id=1326608021]
+position = Vector2(8, 0)
+
+[node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
+shape = SubResource("RectangleShape2D_hu4xk")
+
+[node name="Collision" parent="." index="2" unique_id=440782324]
 position = Vector2(8, 0)

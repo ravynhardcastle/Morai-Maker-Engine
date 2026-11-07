@@ -3,9 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_akhoh"]
 [ext_resource type="Texture2D" uid="uid://k70d1r81ocwb" path="res://Assets/Sprites/Functional/lift.png" id="2_0f8le"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_fww24"]
-size = Vector2(48, 16)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_sp0fn"]
 atlas = ExtResource("2_0f8le")
 region = Rect2(0, 0, 48, 16)
@@ -24,13 +21,21 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_w5ai3"]
 size = Vector2(48, 16)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fww24"]
+size = Vector2(48, 16)
+
 [node name="Lift" unique_id=1217813908 instance=ExtResource("1_akhoh")]
 
-[node name="Collision" parent="." index="0" unique_id=440782324]
-shape = SubResource("RectangleShape2D_fww24")
-
-[node name="Sprite" parent="." index="1" unique_id=592103259]
+[node name="Sprite" parent="." index="0" unique_id=592103259]
+position = Vector2(16, 0)
 sprite_frames = SubResource("SpriteFrames_h2ymf")
 
-[node name="Collider" parent="HitDetection" parent_id_path=PackedInt32Array(1326608021) index="0" unique_id=255896861]
+[node name="HitDetection" parent="." index="1" unique_id=1326608021]
+position = Vector2(16, 0)
+
+[node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
 shape = SubResource("RectangleShape2D_w5ai3")
+
+[node name="Collision" parent="." index="2" unique_id=440782324]
+position = Vector2(16, 0)
+shape = SubResource("RectangleShape2D_fww24")

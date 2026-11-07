@@ -85,9 +85,77 @@ def GetExplanation(weights, mapVal, x, y, allNames):
         buildString+=line+"\n"
     return buildString
 
-allNames = ['Ground', 'Stair', 'Treetop', 'Block', 'Bar', 'Koopa', 'Koopa 2', 'PipeBody', 'Pipe', 'Question', 'Coin', 'Goomba', 'CannonBody', 'Cannon', 'Lakitu', 'Bridge', 'Hard Shell', 'SmallCannon', 'Plant', 'Waves', 'Hill', 'Castle', 'Snow Tree 2', 'Cloud 2', 'Cloud', 'Bush', 'Tree 2', 'Bush 2', 'Tree', 'Snow Tree', 'Fence', 'Bark', 'Flag', 'Mario']
-actions = ['Ground', 'Stair', 'Treetop', 'Block', 'Bar', 'Koopa', 'Koopa 2', 'PipeBody', 'Pipe', 'Question', 'Coin', 'Goomba', 'CannonBody', 'Cannon', 'Lakitu', 'Bridge', 'Hard Shell', 'SmallCannon', 'Plant', 'Waves', 'Hill', 'Castle', 'Snow Tree 2', 'Cloud 2', 'Cloud', 'Bush', 'Tree 2', 'Bush 2', 'Tree', 'Snow Tree', 'Fence', 'Bark', 'Nothing']
-
+allNames = [
+	'Ground',
+	'Stair',
+	'Treetop', 
+	'Block', 
+	'Bar',	 
+	'Koopa', 
+	'Koopa 2', 
+	'PipeBody', 
+	'Pipe', 
+	'Question', 
+	'Coin', 
+	'Goomba', 
+	'CannonBody', 
+	'Cannon', 
+	'Lakitu', 
+	'Bridge', 
+	'Hard Shell', 
+	'SmallCannon', 
+	'Plant', 
+	'Waves', 
+	'Hill', 
+	'Castle', 
+	'Snow Tree 2', 
+	'Cloud 2', 
+	'Cloud', 
+	'Bush', 
+	'Tree 2', 
+	'Bush 2', 
+	'Tree', 
+	'Snow Tree', 
+	'Fence', 
+	'Bark', 
+	'Flag', 
+	'Mario'
+]
+actions = [
+	'Ground',
+	'Stair',
+	'Treetop',
+	'Block',
+	'Bar',
+	'Koopa',
+	'Koopa 2',
+	'PipeBody',
+	'Pipe',
+	'Question',
+	'Coin',
+	'Goomba',
+	'CannonBody',
+	'Cannon',
+	'Lakitu',
+	'Bridge',
+	'Hard Shell',
+	'SmallCannon',
+	'Plant',
+	'Waves',
+	'Hill',
+	'Castle',
+	'Snow Tree 2',
+	'Cloud 2',
+	'Cloud',
+	'Bush',
+	'Tree 2',
+	'Bush 2',
+	'Tree',
+	'Snow Tree',
+	'Fence',
+	'Bark',
+	'Nothing'
+]
 
 networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
 conv = conv_2d(networkInput, 8,4, activation='leaky_relu')

@@ -40,7 +40,8 @@ animations = [{
 }]
 
 [node name="QuestionBlock" unique_id=1217813908 instance=ExtResource("1_ah1j4")]
+RLName = &"Question"
 
-[node name="Sprite" parent="." index="1" unique_id=592103259]
+[node name="Sprite" parent="." index="0" unique_id=592103259]
 sprite_frames = SubResource("SpriteFrames_mxnfs")
 frame_progress = 0.837571

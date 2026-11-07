@@ -3,9 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_k44if"]
 [ext_resource type="Texture2D" uid="uid://b61gnsr8xcs5f" path="res://Assets/Sprites/Functional/billblaster.png" id="2_juh3j"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_juh3j"]
-size = Vector2(16, 32)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_ewi28"]
 atlas = ExtResource("2_juh3j")
 region = Rect2(0, 0, 16, 32)
@@ -24,18 +21,22 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_k44if"]
 size = Vector2(16, 32)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_juh3j"]
+size = Vector2(16, 32)
+
 [node name="BillBlaster" unique_id=1217813908 instance=ExtResource("1_k44if")]
+RLName = &"Cannon"
 
-[node name="Collision" parent="." index="0" unique_id=440782324]
-position = Vector2(0, -8)
-shape = SubResource("RectangleShape2D_juh3j")
-
-[node name="Sprite" parent="." index="1" unique_id=592103259]
+[node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(0, -8)
 sprite_frames = SubResource("SpriteFrames_2f07d")
 
-[node name="HitDetection" parent="." index="2" unique_id=1326608021]
+[node name="HitDetection" parent="." index="1" unique_id=1326608021]
 position = Vector2(0, -8)
 
 [node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
 shape = SubResource("RectangleShape2D_k44if")
+
+[node name="Collision" parent="." index="2" unique_id=440782324]
+position = Vector2(0, -8)
+shape = SubResource("RectangleShape2D_juh3j")

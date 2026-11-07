@@ -49,7 +49,7 @@ func _tab_changed(new_tab: String) -> void:
 	
 func re_render_placeables(new_tab: String = tab) -> void:
 	var new_placeables: Array = placeables[tile_set_sources[new_tab.to_lower()]] # Array[int]
-	var source = tileset.get_source(tile_set_sources[new_tab.to_lower()])
+	var source: TileSetSource = tileset.get_source(tile_set_sources[new_tab.to_lower()])
 	var tile_size_rect: Rect2i = Rect2i(0, 0, tileset.tile_size.x, tileset.tile_size.y)
 	for child in tiles.get_children():
 		child.queue_free()
@@ -69,8 +69,7 @@ func re_render_placeables(new_tab: String = tab) -> void:
 			# More complicated logic needed if this assumption is violated
 			var tile_id: int = placeable.get_cell_alternative_tile(Vector2.ZERO)
 			var tile: Tile = source.get_scene_tile_scene(tile_id).instantiate()
-			add_child(tile) # initiate it so we can get the image
-			image = tile.image
+			image = tile.get_image()
 			tile.queue_free() # i don't wanna play with you anymore...
 				
 		image = pad_image(image)

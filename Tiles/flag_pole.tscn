@@ -23,6 +23,7 @@ animations = [{
 size = Vector2(16, 176)
 
 [node name="FlagPole" unique_id=1217813908 instance=ExtResource("1_8tvi2")]
+RLName = &"Flag"
 
 [node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(0, -80)

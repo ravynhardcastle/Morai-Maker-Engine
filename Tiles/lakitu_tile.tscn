@@ -3,9 +3,6 @@
 [ext_resource type="PackedScene" uid="uid://cuux17xypu6fe" path="res://Tiles/tile.tscn" id="1_vwq4w"]
 [ext_resource type="Texture2D" uid="uid://bpheimt6ii06t" path="res://Assets/Sprites/Enemy/lakitu.png" id="2_udy0e"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_c0wl1"]
-size = Vector2(16, 16)
-
 [sub_resource type="AtlasTexture" id="AtlasTexture_58one"]
 atlas = ExtResource("2_udy0e")
 region = Rect2(0, 0, 16, 24)
@@ -24,14 +21,18 @@ animations = [{
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_s25ud"]
 size = Vector2(16, 16)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_c0wl1"]
+size = Vector2(16, 16)
+
 [node name="LakituTile" unique_id=1217813908 instance=ExtResource("1_vwq4w")]
+RLName = &"Lakitu"
 
-[node name="Collision" parent="." index="0" unique_id=440782324]
-shape = SubResource("RectangleShape2D_c0wl1")
-
-[node name="Sprite" parent="." index="1" unique_id=592103259]
+[node name="Sprite" parent="." index="0" unique_id=592103259]
 position = Vector2(0, -4)
 sprite_frames = SubResource("SpriteFrames_vvcqb")
 
 [node name="Collider" parent="HitDetection" parent_id_path=PackedInt32Array(1326608021) index="0" unique_id=255896861]
 shape = SubResource("RectangleShape2D_s25ud")
+
+[node name="Collision" parent="." index="2" unique_id=440782324]
+shape = SubResource("RectangleShape2D_c0wl1")
