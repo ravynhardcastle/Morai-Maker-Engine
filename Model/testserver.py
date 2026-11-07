@@ -85,6 +85,12 @@ def GetExplanation(weights, mapVal, x, y, allNames):
         buildString+=line+"\n"
     return buildString
 
+def receive(bytes, conn): # This is for the 4 bytes that tell us how many bytes we're about to receive
+	buffer = b""
+	while len(buffer) < bytes:
+		buffer += conn.recv(n - len(buffer))
+	return buffer
+
 allNames = [
 	'Ground',
 	'Stair',
@@ -169,15 +175,16 @@ model.load("testFull.tflearn")#smbANDtestFull
 print ("MODEL LOADED")
 #print ("CONV 1: "+str(conv.W))
 
-TCP_IP = '127.0.0.1'#'dillamond.cc.gt.atl.ga.us'#'128.61.65.211'#'morrible.cc.gt.atl.ga.us'
-TCP_PORT = 5015
-BUFFER_SIZE = 20400
+TCP_IP = 'localhost'
+TCP_PORT = 8009
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s = socket.socket()
 s.bind((TCP_IP, TCP_PORT))
 s.listen(1)
 
 conn, addr = s.accept()
+
+
 prevMap = None
 prevAction = None
 prevStartX = -1
@@ -188,9 +195,14 @@ confidenceDelta = 0.001
 
 while 1:
     try:
-        data = conn.recv(BUFFER_SIZE)
+        length = struct.unpack(">I", receive(4, conn))[0] # 4 because that's how many bytes we set in godot
+        data = json.loads(receive(length, conn))
+		print(len(data["objects"]), "objects")
+		print(data)
 
         if len(data)>0:
+			#TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
+			# but it's a dictionary now
             #print("Data: "+str(data)+", "+str(len(data)))
             dataSplits = data.split("|")
 

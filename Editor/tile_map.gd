@@ -11,6 +11,9 @@ extends Node2D
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
 @onready var grid_size: Vector2 = fg_layer.get_used_rect().size
 @onready var tile_size: int = fg_layer.tile_set.tile_size.x
+var objects_list: Array[Dictionary] # of which the dictionary contains Name: Name, Coords: Vector2i and Layer: FG or Layer: BG
+var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
+var occupied_bg_grid: Array[Array]
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
 
 func _ready() -> void:
@@ -58,9 +61,6 @@ func generate_map() -> void:
 	# By the way, all tiles originate in bottom left as 0,0, and y rises as it goes up
 	# This is because there are some tiles that have blank tiles in the top left
 	# So I want the origin of everything to be bottom left
-	var objects_list: Array[Dictionary] # of which the dictionary contains Name: Name, Coords: Vector2i and Layer: FG or Layer: BG
-	var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
-	var occupied_bg_grid: Array[Array]
 	
 	occupied_fg_grid.resize(grid_size.x as int - 2) # Ignore boundaries
 	occupied_bg_grid.resize(grid_size.x as int - 2)
@@ -168,15 +168,20 @@ func generate_map() -> void:
 			find_and_add_tile.call(coords, true)
 			find_and_add_tile.call(coords, false)
 			
+	# replace nulls with -1
+	for x in occupied_bg_grid.size():
+		for y in occupied_bg_grid[x].size():
+			if occupied_bg_grid[x][y] == null:
+				occupied_bg_grid[x][y] = -1
+			if occupied_fg_grid[x][y] == null:
+				occupied_fg_grid[x][y] = -1
+				
 	# temporary for debugging, for some reason pads a couple extra rows, idk
 	var rotated_grid: Array = range(occupied_fg_grid[0].size()).map(func(col): return occupied_fg_grid.map(func(row): return row[col]))
 	for x in rotated_grid:
 		var row = x
 		for y in row.size():
-			if row[y] == null:
-				row[y] = "000"
-			else:
-				row[y] = "%3d" % row[y]
+			row[y] = "%3d" % row[y]
 		print(row)
 
 func get_scene_info(source: TileSetScenesCollectionSource, scene_id: int) -> Dictionary:
@@ -189,3 +194,7 @@ func get_scene_info(source: TileSetScenesCollectionSource, scene_id: int) -> Dic
 	tile.free()
 	scene_info_cache[tile_scene] = {"name": rl_name, "size": size}
 	return scene_info_cache[tile_scene]
+
+
+func _on_end_turn_button_pressed() -> void:
+	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid)
