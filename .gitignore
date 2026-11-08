@@ -1,7 +1,8 @@
 # Visual Studio 2015 cache directory
 .vs/
 .vscode/
-
+.idea/
+venv/
 # Python
 __pycache__/
 __pycache__.meta

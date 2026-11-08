@@ -6,11 +6,22 @@
 # ————— IMPORTS ————— #
 import json
 import socket, csv, time, struct
+from dataclasses import dataclass
 import numpy as np
-import tflearn
 import tensorflow as tf
-from tflearn import conv_2d, max_pool_2d, local_response_normalization, batch_normalization, fully_connected, regression, input_data, dropout, custom_layer, flatten, reshape, embedding,conv_2d_transpose
+# Old version, we are updating to a new versiob
+#from tflearn import conv_2d, max_pool_2d, local_response_normalization, batch_normalization, fully_connected, regression, input_data, dropout, custom_layer, flatten, reshape, embedding,conv_2d_transpose
+# New imports, swapping to tensorflow keras
+from tensorflow.keras import layers, models, optimizers
 # ————— END IMPORTS ————— #
+
+# ————— CONFIG ————— #
+@dataclass
+class ServerConfig:
+	TCP_IP: str = '127.0.0.1' #localhost' (yeah this could stay local host, im just hard coding this for now)
+	TCP_PORT: int = 8039
+# ————— END CONFIG ————— #
+
 def GetEmptyMap(allNames):
 	emptyMap = []
 	for x in range(0, 40):
@@ -175,148 +186,208 @@ actions = [
 	'Nothing'
 ]
 
-networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
-conv = conv_2d(networkInput, 8, 4, activation='leaky_relu')
-conv2 = conv_2d(conv, 16, 3, activation='leaky_relu')
-conv3 = conv_2d(conv2, 32, 3, activation='leaky_relu')
-fc = tflearn.fully_connected(conv3, 40 * 15 * len(actions), activation='leaky_relu')
-mapShape = tf.reshape(fc, [-1, 40, 15, len(actions)])
-network = tflearn.regression(mapShape, optimizer='adam', metric='accuracy', loss='mean_square', learning_rate=0.004)
-model = tflearn.DNN(network)
-model.load("testFull.tflearn")  # smbANDtestFull
-print("MODEL LOADED")
-# print ("CONV 1: "+str(conv.W))
+def server_create_model():
+	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
+	network_inputs = layers.Input(shape=(40,15,len(allNames)))
+	#conv = conv_2d(networkInput, 8, 4, activation='leaky_relu')
+	conv = layers.Conv2D(filters=8, kernel_size=4, activation='leaky_relu')(network_inputs)
+	#conv2 = conv_2d(conv, 16, 3, activation='leaky_relu')
+	conv2 = layers.Conv2D(filters=16, kernel_size=3, activation='leaky_relu')(conv)
+	#conv3 = conv_2d(conv2, 32, 3, activation='leaky_relu')
+	conv3 = layers.Conv2D(filters=32, kernel_size=3, activation='leaky_relu')(conv2)
+	#fc = tflearn.fully_connected(conv3, 40 * 15 * len(actions), activation='leaky_relu')
+	flatten_layer = layers.Flatten()(conv3) #unsure if I need this
+	fc = layers.Dense(40 * 15 * len(actions), activation='leaky_relu')(flatten_layer)
+	#mapShape = tf.reshape(fc, [-1, 40, 15, len(actions)])
+	network_output = layers.Reshape((40, 15, len(actions)))(fc)
+	#network = tflearn.regression(mapShape, optimizer='adam', metric='accuracy', loss='mean_square', learning_rate=0.004)
+	model = models.Model(inputs=network_inputs, outputs=network_output)
+	model.compile(
+		optimizer=optimizers.Adam(learning_rate=0.004),
+		loss='mean_square_error',
+		metrics=['accuracy']
+	)
 
-TCP_IP = 'localhost'
-TCP_PORT = 8009
-
-s = socket.socket()
-s.bind((TCP_IP, TCP_PORT))
-s.listen(1)
-
-conn, addr = s.accept()
-
-prevMap = None
-prevAction = None
-prevStartX = -1
-rejections = []  # HOLD ON TO ALL REJECTIONS. NEVER ADD AGANE
-# WAIT FOR PROMPT
-minimumInteractionConfidence = 0.01
-confidenceDelta = 0.001
-
-while 1:
+	#model = tflearn.DNN(network)
+	#model.load("testFull.tflearn")  # smbANDtestFull
 	try:
-		length = struct.unpack(">I", receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
-		data = json.loads(receive(length, conn))
-		print(len(data["objects"]), "objects")
-		print(data)
+		model.load_weights("Model/testFull.h5")
+		print("Model weights loaded")
+	except Exception as e:
+		print("model weights no failed to load: " + str(e))
+	# print ("CONV 1: "+str(conv.W))
+	return model
 
-		if len(data) > 0:
-			# TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
-			# but it's a dictionary now
-			# print("Data: "+str(data)+", "+str(len(data)))
-			dataSplits = data.split("|")
+def server_create_socket(config: ServerConfig):
+	TCP_IP = config.TCP_IP
+	TCP_PORT = config.TCP_PORT
 
-			currMap = StringToMap(dataSplits[0], allNames)
+	s = socket.socket()
+	s.bind((TCP_IP, TCP_PORT))
+	s.listen(1)
+	return s
 
-			thisStartX = int(dataSplits[1])
-			# Retrain
-			if not prevMap == None and abs(thisStartX - prevStartX) < 30:
-				anyChange = False
-				differenceX = thisStartX - prevStartX
-				for x in range(0, 40):
-					if x + differenceX < 40 and x + differenceX >= 0:
-						for y in range(0, 15):
-							for z in range(0, len(actions)):
-								if prevAction[x + differenceX][y][z] > 0:
-									if currMap[x][y][z] > 0:
+
+
+
+def server_connection_handler(config: ServerConfig, socket, model):
+	print("————— Starting Server Connection —————")
+
+	# Wait for the server connection
+	print(f"[Server] Listening on {config.TCP_IP}:{config.TCP_PORT}")
+	print(f"[Server] Waiting for connection from Godot.")
+	conn, addr = socket.accept()
+	print(f"[Server] Connected {addr}. Thanks Godot! :)")
+
+	# Initialize variables
+	prevMap = None
+	prevAction = None
+	prevStartX = -1
+	rejections = []  # HOLD ON TO ALL REJECTIONS. NEVER ADD AGAIN
+	# WAIT FOR PROMPT
+	minimumInteractionConfidence = 0.01
+	confidenceDelta = 0.001
+	while 1:
+		try:
+			length = struct.unpack(">I", receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
+			data = json.loads(receive(length, conn))
+			print(f"SUCCESSFULLY RECEIVED DATA FROM GODOT! Payload size: {length} bytes")
+			print(len(data["objects"]), "objects")
+			print(data)
+
+			if len(data) > 0:
+				# TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
+				# but it's a dictionary now
+				# print("Data: "+str(data)+", "+str(len(data)))
+
+				# Data that's to be received comes in a dictionary in the following format:
+				# Other notes to remember [0,0] is the top left corner of the grid
+				'''
+				{'bg': [[]], # where this contains a values of either -1 (nothing) or the index of whatever object is in this location, within the 'allNames" list (I assume)
+				'fg': [[]], # same as above, but for foreground objects,
+				'objects': [{'Coords': [x, y],
+							 'Layer': 'BG' or 'FG',
+							 'Name': str, # name of the object, which should be in the allNames list
+				'''
+
+
+				dataSplits = data.split("|")
+
+				currMap = StringToMap(dataSplits[0], allNames)
+
+				thisStartX = int(dataSplits[1])
+				# Retrain
+				if not prevMap == None and abs(thisStartX - prevStartX) < 30:
+					anyChange = False
+					differenceX = thisStartX - prevStartX
+					for x in range(0, 40):
+						if x + differenceX < 40 and x + differenceX >= 0:
+							for y in range(0, 15):
+								for z in range(0, len(actions)):
+									if prevAction[x + differenceX][y][z] > 0:
+										if currMap[x][y][z] > 0:
+											anyChange = True
+											prevAction[x + differenceX][y][z] += 0.1
+										else:
+											anyChange = True
+											prevAction[x + differenceX][y][z] -= 0.1
+
+											print("REMOVED: " + str([actions[z], x + thisStartX, y]))
+									elif currMap[x][y][z] > 0:
 										anyChange = True
 										prevAction[x + differenceX][y][z] += 0.1
-									else:
-										anyChange = True
-										prevAction[x + differenceX][y][z] -= 0.1
+						# LEARN
+					if anyChange:
+						minimumInteractionConfidence += confidenceDelta
+						print("RETRAIN")
+						model.fit([prevMap],
+								  Y_targets=[prevAction],
+								  n_epoch=1,
+								  shuffle=False,
+								  show_metric=False,
+								  snapshot_epoch=False,
+								  batch_size=1,
+								  run_id='activeLearning')
 
-										print("REMOVED: " + str([actions[z], x + thisStartX, y]))
-								elif currMap[x][y][z] > 0:
-									anyChange = True
-									prevAction[x + differenceX][y][z] += 0.1
-							# LEARN
-				if anyChange:
-					minimumInteractionConfidence += confidenceDelta
-					print("RETRAIN")
-					model.fit([prevMap],
-							  Y_targets=[prevAction],
-							  n_epoch=1,
-							  shuffle=False,
-							  show_metric=False,
-							  snapshot_epoch=False,
-							  batch_size=1,
-							  run_id='activeLearning')
+				predY = model.predict([currMap])
+				thisAction = GetEmptyMap(actions)
 
-			predY = model.predict([currMap])
-			thisAction = GetEmptyMap(actions)
+				# REPLY
+				toString = ""
+				nothingSent = True
+				maxToSend = []
+				maxVal = -1
 
-			# REPLY
-			toString = ""
-			nothingSent = True
-			maxToSend = []
-			maxVal = -1
-
-			sents = []
-			for x in range(0, 40):
-				for y in range(0, 15):
-					for z in range(0, len(actions)):
-						if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(sents) < 30:
-							if not [actions[z], x + thisStartX, y] in rejections:
-								conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*")
-								sents.append([x, y, z])
-								print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
-								rejections.append([actions[z], x + thisStartX, y])
-								# print ("     EXPLANATION: "+GetExplanation(convW, currMap, x, y, allNames))
-								thisAction[x][y][z] = predY[0][x][y][z]
-								nothingSent = False
-						elif nothingSent:
-							if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1:
-								if not [actions[z], x + thisStartX, y] in rejections:
-									maxToSend = [x, y, z, predY[0][x][y][z]]
-									maxVal = predY[0][x][y][z]
-					# MUST DO SOMETHING
-			if nothingSent:
-				thisAction[x][y][z] = minimumInteractionConfidence + confidenceDelta
-				sents.append([x, y, z])
-				print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
-				conn.send(
-					str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*")
-			conn.close()  # Close
-
-			# PRINT MAP
-			'''
-			currMapStr = ""
-			for y in range(14, -1, -1):
-				line = ""
+				sents = []
 				for x in range(0, 40):
-					if 1 in currMap[x][y]:
-						line+= allNames[currMap[x][y].index(1)]+"-"
-					else:
-						line+="      -"
-				currMapStr+=line+"\n"
-			print (currMapStr)
-			'''
-			# EXPLANATIONS
-			convW = np.array(model.get_weights(conv.W))
-			for sent in sents:
-				print("---")
-				print("FOR SENT: " + str([actions[sent[2]], sent[0], sent[1], predY[0][sent[0]][sent[1]][sent[2]]]))
-				if 1 in currMap[sent[0]][sent[1]]:
-					# WHY IS THIS NOT HIT????
-					print("IN CURR MAP: " + str(allNames[currMap[sent[0]][sent[1]].index(1)]))
-				print("EXPLAIN:\n" + GetExplanation(convW, currMap, sent[0], sent[1], allNames))
+					for y in range(0, 15):
+						for z in range(0, len(actions)):
+							if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(
+									sents) < 30:
+								if not [actions[z], x + thisStartX, y] in rejections:
+									conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*")
+									sents.append([x, y, z])
+									print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
+									rejections.append([actions[z], x + thisStartX, y])
+									# print ("     EXPLANATION: "+GetExplanation(convW, currMap, x, y, allNames))
+									thisAction[x][y][z] = predY[0][x][y][z]
+									nothingSent = False
+							elif nothingSent:
+								if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1:
+									if not [actions[z], x + thisStartX, y] in rejections:
+										maxToSend = [x, y, z, predY[0][x][y][z]]
+										maxVal = predY[0][x][y][z]
+				# MUST DO SOMETHING
+				if nothingSent:
+					thisAction[x][y][z] = minimumInteractionConfidence + confidenceDelta
+					sents.append([x, y, z])
+					print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
+					conn.send(
+						str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(
+							maxToSend[3]) + "*")
+				conn.close()  # Close
 
-			prevMap = list(currMap)
-			prevAction = list(thisAction)
-			prevStartX = thisStartX
-			conn, addr = s.accept()  # Reset
-	except KeyboardInterrupt:
-		conn.close()
-		del conn
-		break
+				# PRINT MAP
+				'''
+				currMapStr = ""
+				for y in range(14, -1, -1):
+					line = ""
+					for x in range(0, 40):
+						if 1 in currMap[x][y]:
+							line+= allNames[currMap[x][y].index(1)]+"-"
+						else:
+							line+="      -"
+					currMapStr+=line+"\n"
+				print (currMapStr)
+				'''
+				# EXPLANATIONS (commented out for now)
+				'''
+				convW = np.array(model.get_weights(conv.W))
+				for sent in sents:
+					print("---")
+					print("FOR SENT: " + str([actions[sent[2]], sent[0], sent[1], predY[0][sent[0]][sent[1]][sent[2]]]))
+					if 1 in currMap[sent[0]][sent[1]]:
+						# WHY IS THIS NOT HIT????
+						print("IN CURR MAP: " + str(allNames[currMap[sent[0]][sent[1]].index(1)]))
+					print("EXPLAIN:\n" + GetExplanation(convW, currMap, sent[0], sent[1], allNames))
+				'''
+
+				prevMap = list(currMap)
+				prevAction = list(thisAction)
+				prevStartX = thisStartX
+				conn, addr = socket.accept()  # Reset
+		except KeyboardInterrupt:
+			conn.close()
+			del conn
+			break
+
+
+def main():
+	config = ServerConfig()
+	model = server_create_model()
+	socket = server_create_socket(config)
+	server_connection_handler(config=config, socket=socket, model=model)
+
+
+if __name__ == "__main__":
+	main()

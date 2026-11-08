@@ -11,6 +11,7 @@ extends Node2D
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
 @onready var grid_size: Vector2 = fg_layer.get_used_rect().size
 @onready var tile_size: int = fg_layer.tile_set.tile_size.x
+@export var end_turn_button: Button  # Connection to the end turn button
 var objects_list: Array[Dictionary] # of which the dictionary contains Name: Name, Coords: Vector2i and Layer: FG or Layer: BG
 var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
 var occupied_bg_grid: Array[Array]
@@ -21,6 +22,7 @@ func _ready() -> void:
 	shadow_rect.material.set_shader_parameter("caster_texture", shadow_viewport.get_texture())
 	RenderingServer.frame_pre_draw.connect(_sync_shadow_transform)
 	generate_map()
+
 
 func _process(delta: float) -> void:
 	var max_x: float = get_viewport().get_visible_rect().size.x
@@ -197,4 +199,5 @@ func get_scene_info(source: TileSetScenesCollectionSource, scene_id: int) -> Dic
 
 
 func _on_end_turn_button_pressed() -> void:
+	print("End_Turn Button Pressed")
 	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid)

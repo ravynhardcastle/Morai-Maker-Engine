@@ -1,6 +1,6 @@
 extends Node
-
-const PORT: int = 8009
+const TCP_IP: String = "127.0.0.1"
+const PORT: int = 8039
 const RECEIVE_BYTES: int = 0
 var server: StreamPeerTCP
 var pending: Array
@@ -15,7 +15,8 @@ var selected_tile: EditorTile:
 		
 func _ready() -> void:
 	server = StreamPeerTCP.new()
-	var connection: int = server.connect_to_host("localhost", PORT)
+	#var connection: int = server.connect_to_host("localhost", PORT) # this defaults to an IPV6 address, which im not sure if we wanna use? commenting out for now
+	var connection: int = server.connect_to_host(TCP_IP, PORT)
 	print(connection)
 	print(server.get_connected_host())
 	print(server.get_connected_port())
@@ -32,6 +33,7 @@ func _process(_delta: float) -> void:
 			pending.clear()
 		
 func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array]) -> void: # info in tile_map.gd
+	print("Sending game state to python server for calculation")
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings
 	var objects: Array
 	for object in objects_list:
