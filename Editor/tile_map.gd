@@ -7,6 +7,7 @@ extends Node2D
 @export var camera_selection_sprite: Sprite2D
 @export var shadow_viewport: SubViewport
 @export var shadow_rect: ColorRect
+@export var selection_highlight: Node2D
 @onready var fg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "ForegroundLayer")]
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
 @onready var grid_size: Vector2 = fg_layer.get_used_rect().size
@@ -15,6 +16,23 @@ var objects_list: Array[Dictionary] # of which the dictionary contains Name: Nam
 var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
 var occupied_bg_grid: Array[Array]
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
+var select_pos: Vector2i: # the grid position you have selected
+	set(value):
+		if value != select_pos:
+			select_pos = value
+			# WRONG APPROACH!!! Use an Area2D and detect collisions directly and then draw the rect with the collision box of the tile directly
+			# TODO: change that!!!!
+			# I wrote this then ran out of time to fix it but yeah looping over all objects is stupidly wasteful
+			selected_object = objects_list[objects_list.find_custom(func(object: Dictionary): return coords_in_object(select_pos, object))]
+			select_rect = Rect2i(select_pos.x * tile_size as int,
+			select_pos.y * tile_size as int,
+			tile_size as int,
+			tile_size as int)
+
+			selection_highlight.queue_redraw()
+			
+var selected_object: Dictionary # object from the objects list we have selected right now
+var select_rect: Rect2i # the shape that the object is
 
 func _ready() -> void:
 	shadow_viewport.world_2d = get_viewport().world_2d
@@ -38,6 +56,10 @@ func _process(delta: float) -> void:
 
 	camera_selection_sprite.queue_redraw()
 	camera_selection_sprite.position = ((camera.get_screen_center_position() - camera.get_viewport_rect().size / 2) - Vector2(tile_size * 3, tile_size/2)) / (scale * 2)
+			
+	# Highlight the tile / semantic object you're selecting
+	var mouse: Vector2 = get_global_mouse_position()
+	select_pos = floor(mouse / tile_size / scale)
 			
 func _sync_shadow_transform() -> void:
 	shadow_viewport.canvas_transform = get_viewport().canvas_transform
@@ -71,7 +93,7 @@ func generate_map() -> void:
 	
 	# We don't need to -1 to our coords because the boundaries technically start at -1!
 	var new_object: Callable = func(_name: StringName, coords: Vector2i, layer: StringName) -> Dictionary:
-		return {&"Name": _name, &"Coords": coords, &"Layer": layer}
+		return {&"name": _name, &"coords": coords, &"layer": layer}
 		
 	var add_to_grid: Callable = func(_grid: Array[Array], coords: Vector2i, index: int) -> void:
 		_grid[coords.x][coords.y] = index
@@ -195,6 +217,13 @@ func get_scene_info(source: TileSetScenesCollectionSource, scene_id: int) -> Dic
 	scene_info_cache[tile_scene] = {"name": rl_name, "size": size}
 	return scene_info_cache[tile_scene]
 
+func coords_in_object(coords: Vector2i, object: Dictionary) -> bool:
+	# Object: {"name": StringName, "coords": Vector2i, "layer": StringName
+	if object.coords == coords: return true # This is always the case, every object is atleast 1x1
+	return false
 
 func _on_end_turn_button_pressed() -> void:
 	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid)
+
+func _on_selection_highlight_draw() -> void:
+	selection_highlight.draw_rect(select_rect, Color.WHITE, true)

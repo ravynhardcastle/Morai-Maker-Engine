@@ -270,3 +270,5 @@ offset_transform_scale = Vector2(0.84, 0.84)
 theme = ExtResource("3_55rxr")
 text = "END
 TURN"
+
+[connection signal="pressed" from="UserInterface/BottomContainer/BottomDisplay/EndTurnMenu/EndTurnButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_turn_button_pressed"]

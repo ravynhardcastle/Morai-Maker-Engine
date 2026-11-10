@@ -36,8 +36,8 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 	var objects: Array
 	for object in objects_list:
 		var clone: Dictionary = object.duplicate()
-		var coords: Vector2i = clone[&"Coords"]
-		clone[&"Coords"] = [coords.x, coords.y]
+		var coords: Vector2i = clone[&"coords"]
+		clone[&"coords"] = [coords.x, coords.y]
 		objects.append(clone)
 
 	var data: Dictionary = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid}
