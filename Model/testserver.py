@@ -9,10 +9,12 @@ import socket, csv, time, struct
 from dataclasses import dataclass
 import numpy as np
 import tensorflow as tf
-# Old version, we are updating to a new versiob
+# Old version, we are updating to a new version
 #from tflearn import conv_2d, max_pool_2d, local_response_normalization, batch_normalization, fully_connected, regression, input_data, dropout, custom_layer, flatten, reshape, embedding,conv_2d_transpose
 # New imports, swapping to tensorflow keras
 from tensorflow.keras import layers, models, optimizers
+# Personal File Imports
+from tile_config import allNames, actions
 # ————— END IMPORTS ————— #
 
 # ————— CONFIG ————— #
@@ -107,84 +109,33 @@ def GetExplanation(weights, mapVal, x, y, allNames):
 	return buildString
 
 
-def receive(bytes, conn):  # This is for the 4 bytes that tell us how many bytes we're about to receive
+# ————— Networking Functions ————— #
+# region Networking Functions
+
+# Used to receive information from the Godot client.
+def server_receive(bytes, conn):  # This is for the 4 bytes that tell us how many bytes we're about to receive
 	buffer = b""
 	while len(buffer) < bytes:
 		buffer += conn.recv(bytes - len(buffer)) #Swapped n to bytes, will confirm if this is correct later
 	return buffer
+# Used to send information to the Godot client.
+def server_send(data: dict, connection):
+	'''
+	This is setup to send some dict of data to the client, referencing Godot code
+	'''
+	print(f"[Server] Sending data to Godot: {data}")
+	print("[Server] ——————————————————————————————")
+	json_str = json.dumps(data)
+	bytes = json_str.encode('utf-8')
+	prefix = struct.pack(">I", len(bytes))
+	connection.sendall(prefix + bytes)
+#endregion
+# ————— END Networking Functions ————— #
+def server_process_godot_data(fg_data, bg_data, allNames):
+	'''
+	This will convert the dict data provided by Godot into Tensors that can be used within the network
+	'''
 
-
-allNames = [
-	'Ground',
-	'Stair',
-	'Treetop',
-	'Block',
-	'Bar',
-	'Koopa',
-	'Koopa 2',
-	'PipeBody',
-	'Pipe',
-	'Question',
-	'Coin',
-	'Goomba',
-	'CannonBody',
-	'Cannon',
-	'Lakitu',
-	'Bridge',
-	'Hard Shell',
-	'SmallCannon',
-	'Plant',
-	'Waves',
-	'Hill',
-	'Castle',
-	'Snow Tree 2',
-	'Cloud 2',
-	'Cloud',
-	'Bush',
-	'Tree 2',
-	'Bush 2',
-	'Tree',
-	'Snow Tree',
-	'Fence',
-	'Bark',
-	'Flag',
-	'Mario'
-]
-actions = [
-	'Ground',
-	'Stair',
-	'Treetop',
-	'Block',
-	'Bar',
-	'Koopa',
-	'Koopa 2',
-	'PipeBody',
-	'Pipe',
-	'Question',
-	'Coin',
-	'Goomba',
-	'CannonBody',
-	'Cannon',
-	'Lakitu',
-	'Bridge',
-	'Hard Shell',
-	'SmallCannon',
-	'Plant',
-	'Waves',
-	'Hill',
-	'Castle',
-	'Snow Tree 2',
-	'Cloud 2',
-	'Cloud',
-	'Bush',
-	'Tree 2',
-	'Bush 2',
-	'Tree',
-	'Snow Tree',
-	'Fence',
-	'Bark',
-	'Nothing'
-]
 
 def server_create_model():
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
@@ -217,7 +168,6 @@ def server_create_model():
 		print("model weights no failed to load: " + str(e))
 	# print ("CONV 1: "+str(conv.W))
 	return model
-
 def server_create_socket(config: ServerConfig):
 	TCP_IP = config.TCP_IP
 	TCP_PORT = config.TCP_PORT
@@ -226,10 +176,6 @@ def server_create_socket(config: ServerConfig):
 	s.bind((TCP_IP, TCP_PORT))
 	s.listen(1)
 	return s
-
-
-
-
 def server_connection_handler(config: ServerConfig, socket, model):
 	print("————— Starting Server Connection —————")
 
@@ -249,9 +195,16 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	confidenceDelta = 0.001
 	while 1:
 		try:
-			length = struct.unpack(">I", receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
-			data = json.loads(receive(length, conn))
-			print(f"SUCCESSFULLY RECEIVED DATA FROM GODOT! Payload size: {length} bytes")
+			length = struct.unpack(">I", server_receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
+			data = json.loads(server_receive(length, conn))
+			print(f"Successfully obtained data from Godot! Payload size: {length} bytes")
+
+			# FOR TESTING -----------------------
+			# we will send a message back to Godot to inform them we recieved their data
+			data_payload = {'msg': "[Server-msg] Data received successfully!"}
+			server_send(data_payload, conn)
+			# ------------------------------------
+
 			print(len(data["objects"]), "objects")
 			print(data)
 
@@ -269,8 +222,13 @@ def server_connection_handler(config: ServerConfig, socket, model):
 							 'Layer': 'BG' or 'FG',
 							 'Name': str, # name of the object, which should be in the allNames list
 				'''
-
-
+				# ————— Extract Data & Prepare Variables ————— #
+				bg_data = data["bg"]
+				fg_data = data["fg"]
+				objects_data = data["objects"]
+				map_length = 40 # Left to right
+				map_height = 30 # Top to bottom
+				# ————— Need to convert everything to tensors ————— #
 				dataSplits = data.split("|")
 
 				currMap = StringToMap(dataSplits[0], allNames)

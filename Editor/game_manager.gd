@@ -31,6 +31,33 @@ func _process(_delta: float) -> void:
 		if status == StreamPeerTCP.STATUS_CONNECTED and !pending.is_empty():
 			send_state.callv(pending)
 			pending.clear()
+	
+	# —————————————————————————————————————————————————————————————————————
+	# ————— Division for where the Godot will be listening for data ————— #
+	# Ensure we are still connected to the server
+	if (not StreamPeerTCP.STATUS_CONNECTED): return
+	# attempt to recieve bytes from the server
+	if (not server.get_available_bytes()): return
+	# Get the lengto of the packet we recieved 
+	var packet_length := server.get_u32()
+	var res := server.get_data(packet_length)
+	# check for the code of the recieved data
+	if (not res[0] == OK): return
+	# By this point, we know we have recieved valid data. lets read it
+	var json_string = res[1].get_string_from_utf8()
+	var data = JSON.parse_string(json_string)
+	if (data is Dictionary):
+		# For now im just looking for my 'msg' key, as thats all im sending LOL
+		var msg = data.get("msg")
+		if (msg): print(msg)
+	else:
+		print("[Client] Failed to read server sent data")
+		
+	# —————————————————————————————————————————————————————————————————————
+	
+	
+
+
 		
 func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array]) -> void: # info in tile_map.gd
 	print("Sending game state to python server for calculation")
