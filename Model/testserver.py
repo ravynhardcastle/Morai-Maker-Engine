@@ -24,6 +24,8 @@ class ServerConfig:
 	TCP_PORT: int = 8039
 # ————— END CONFIG ————— #
 
+# ————— Old Implementation ————— #
+# region Old Implementation
 def GetEmptyMap(allNames):
 	emptyMap = []
 	for x in range(0, 40):
@@ -32,8 +34,6 @@ def GetEmptyMap(allNames):
 			column.append([0] * len(allNames))
 		emptyMap.append(column)
 	return emptyMap
-
-
 def FlattenMap(mapInput, allNames):
 	flatMap = []
 	for y in range(0, 15):
@@ -41,8 +41,6 @@ def FlattenMap(mapInput, allNames):
 			for z in range(0, len(allNames)):
 				flatMap.append(mapInput[x][y][z])
 	return flatMap
-
-
 def UnflattenMap(mapInput, allNames):
 	emptyMap = GetEmptyMap(allNames)
 	for x in range(0, 40):
@@ -50,15 +48,11 @@ def UnflattenMap(mapInput, allNames):
 			for z in range(0, len(allNames)):
 				emptyMap[x][y][z] = mapInput[y * 40 * len(allNames) + x * len(allNames) + z]
 	return emptyMap
-
-
 def StringToList(strVal):
 	listVal = []
 	for s in strVal:
 		listVal.append(int(s))
 	return listVal
-
-
 def StringToMap(strVal, allNames):
 	emptyMap = GetEmptyMap(allNames)
 	splits1 = strVal.split("-")
@@ -67,8 +61,6 @@ def StringToMap(strVal, allNames):
 			splits2 = s1.split("*")
 			emptyMap[int(splits2[0])][int(splits2[1])][int(splits2[2])] = 1
 	return emptyMap
-
-
 # In this 8 by 8 localized on the added point find what prompted it
 # shape=(4, 4, 34, 8)
 def GetExplanation(weights, mapVal, x, y, allNames):
@@ -107,16 +99,22 @@ def GetExplanation(weights, mapVal, x, y, allNames):
 				line += "0-"
 		buildString += line + "\n"
 	return buildString
+#endregion
+# ————— END Old Implementation ————— #
+
 
 
 # ————— Networking Functions ————— #
 # region Networking Functions
-
 # Used to receive information from the Godot client.
 def server_receive(bytes, conn):  # This is for the 4 bytes that tell us how many bytes we're about to receive
 	buffer = b""
 	while len(buffer) < bytes:
-		buffer += conn.recv(bytes - len(buffer)) #Swapped n to bytes, will confirm if this is correct later
+		data = conn.recv(bytes - len(buffer))
+		# adding a check to make sure we dont et stuck if the client disconnects
+		if not data:
+			raise ConnectionError("Connection closed by the client.")
+		buffer += data
 	return buffer
 # Used to send information to the Godot client.
 def server_send(data: dict, connection):
@@ -131,11 +129,50 @@ def server_send(data: dict, connection):
 	connection.sendall(prefix + bytes)
 #endregion
 # ————— END Networking Functions ————— #
-def server_process_godot_data(fg_data, bg_data, allNames):
+
+
+# ————— New Implementation ————— #
+#region New Implementation
+def server_process_godot_data(fg_data, bg_data, objects_data, allNames, map_width:int =40, map_height:int=15):
 	'''
 	This will convert the dict data provided by Godot into Tensors that can be used within the network
 	'''
 
+	# Create the tensor of our data.
+	map = np.zeros((map_width, map_height, len(allNames)), dtype=np.float32)
+
+
+	# process the objects by connecting them to objects within the allNames list
+	#TODO: Its important to ensure that allNames actually contains all the objects that are within our data
+	objects = []
+	for object in objects_data:
+		# This name SHOULD be in this list
+		if object["Name"] in allNames:
+			objects.append(allNames.index(object["Name"]))
+	# Process the Background
+	for y in range(len(bg_data)):
+		for x in range(len(bg_data[y])):
+			# its valid if its not -1
+			value = bg_data[y][x]
+			# Ensure its non-negative, and within the bounds of allNames
+			if value >=0 and value < len(allNames):
+				map[x][y][value] = 1.0
+	# run it back for the foregrond
+	for y in range(len(fg_data)):
+		for x in range(len(fg_data[y])):
+			# its valid if its not -1
+			value = fg_data[y][x]
+			# Ensure its non-negative, and within the bounds of allNames
+			if value >=0 and value < len(allNames):
+				map[x][y][value] = 1.0
+	# so this should be a tensor where we have x,y value, and at that x,y value we have the index of the object that is there
+	# or 0 if nothing is there
+	return map
+
+
+
+#endregion
+# ————— END New Implementation ————— #
 
 def server_create_model():
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
@@ -155,7 +192,7 @@ def server_create_model():
 	model = models.Model(inputs=network_inputs, outputs=network_output)
 	model.compile(
 		optimizer=optimizers.Adam(learning_rate=0.004),
-		loss='mean_square_error',
+		loss='mean_squared_error',
 		metrics=['accuracy']
 	)
 
@@ -206,7 +243,9 @@ def server_connection_handler(config: ServerConfig, socket, model):
 			# ------------------------------------
 
 			print(len(data["objects"]), "objects")
-			print(data)
+			print(data["objects"])
+			print("----------------------")
+			print(allNames)
 
 			if len(data) > 0:
 				# TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
@@ -227,14 +266,15 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				fg_data = data["fg"]
 				objects_data = data["objects"]
 				map_length = 40 # Left to right
-				map_height = 30 # Top to bottom
+				map_height = 15 # Top to bottom
 				# ————— Need to convert everything to tensors ————— #
-				dataSplits = data.split("|")
+				#dataSplits = data.split("|")
+				currMap = server_process_godot_data(fg_data, bg_data, allNames, map_length, map_height)
 
-				currMap = StringToMap(dataSplits[0], allNames)
+				#currMap = StringToMap(dataSplits[0], allNames)
 
 				thisStartX = int(dataSplits[1])
-				# Retrain
+				# ————— Retrain ————— #
 				if not prevMap == None and abs(thisStartX - prevStartX) < 30:
 					anyChange = False
 					differenceX = thisStartX - prevStartX
