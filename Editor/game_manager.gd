@@ -31,7 +31,7 @@ func _process(_delta: float) -> void:
 			send_state.callv(pending)
 			pending.clear()
 		
-func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array]) -> void: # info in tile_map.gd
+func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], camera_position: int) -> void: # info in tile_map.gd
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings
 	var objects: Array
 	for object in objects_list:
@@ -40,13 +40,13 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 		clone[&"coords"] = [coords.x, coords.y]
 		objects.append(clone)
 
-	var data: Dictionary = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid}
+	var data: Dictionary = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position}
 	var json: String = JSON.stringify(data)
 	var bytes: PackedByteArray = json.to_utf8_buffer()
 	
 	# If our status is messed up, save what we have rn into pending
 	if server.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-		pending = [objects_list, occupied_fg_grid, occupied_bg_grid]
+		pending = [objects_list, occupied_fg_grid, occupied_bg_grid, camera_position]
 		return
 	
 	server.big_endian = true

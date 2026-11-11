@@ -223,7 +223,8 @@ func coords_in_object(coords: Vector2i, object: Dictionary) -> bool:
 	return false
 
 func _on_end_turn_button_pressed() -> void:
-	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid)
+	print(round(camera.position.x / tile_size))
+	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid, round(camera.position.x / tile_size))
 
 func _on_selection_highlight_draw() -> void:
 	selection_highlight.draw_rect(select_rect, Color.WHITE, true)
