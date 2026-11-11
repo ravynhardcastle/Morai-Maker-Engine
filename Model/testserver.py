@@ -12,7 +12,7 @@ import tensorflow as tf
 # Old version, we are updating to a new version
 #from tflearn import conv_2d, max_pool_2d, local_response_normalization, batch_normalization, fully_connected, regression, input_data, dropout, custom_layer, flatten, reshape, embedding,conv_2d_transpose
 # New imports, swapping to tensorflow keras
-from tensorflow.keras import layers, models, optimizers
+from tensorflow.keras import layers, models, optimizers #NGL these are shown as errors despite working so.. I just ignore that
 # Personal File Imports
 from tile_config import allNames, actions
 # ————— END IMPORTS ————— #
@@ -133,15 +133,18 @@ def server_send(data: dict, connection):
 
 # ————— New Implementation ————— #
 #region New Implementation
-def server_process_godot_data(fg_data, bg_data, objects_data, allNames, map_width:int =40, map_height:int=15):
+def server_process_godot_data(fg_data, bg_data, objects_data, start_x, allNames, map_width:int =40, map_height:int=15):
 	'''
 	This will convert the dict data provided by Godot into Tensors that can be used within the network
+	PARAMS:
+	fg_data: 2D list of either -1 or the index of the object in objects_data
+	bg_data: 2D list of either -1 or the index of the object in objects_data
+	objects_data: list of dicts, each dict has keys "coords", "layer", and "name"
+	start_x: the x coord which will be used to offset the x values of the objects in objects_data
+	allNames: List of all of the names of objects that can be in the level.
 	'''
-
 	# Create the tensor of our data.
 	map = np.zeros((map_width, map_height, len(allNames)), dtype=np.float32)
-
-
 	# process the objects by connecting them to objects within the allNames list
 	#TODO: Its important to ensure that allNames actually contains all the objects that are within our data
 	objects = []
@@ -149,22 +152,40 @@ def server_process_godot_data(fg_data, bg_data, objects_data, allNames, map_widt
 		# This name SHOULD be in this list
 		if object["name"] in allNames:
 			objects.append(allNames.index(object["name"]))
+		else:
+			# Keep the positions lined up with objects_data, so unknown names get -1 instead of being skipped
+			objects.append(-1)
 	# Process the Background
-	for y in range(len(bg_data)):
-		for x in range(len(bg_data[y])):
+	for x in range(map_width):
+		# Consider the offset
+		true_x = x + start_x
+		# Ensure we are within bounds of the level
+		if true_x < 0 or true_x >= len(bg_data):
+			continue
+		for y in range(map_height):
+			if y >= len(bg_data[true_x]):
+				continue
 			# its valid if its not -1
-			value = bg_data[y][x]
-			# Ensure its non-negative, and within the bounds of allNames
-			if value >=0 and value < len(allNames):
-				map[x][y][value] = 1.0
+			value = bg_data[true_x][y]
+			# Ensure its non-negative, and within the bounds
+			if value >=0 and value < len(objects) and objects[value] >= 0:
+				map[x][y][objects[value]] = 1.0
+
 	# run it back for the foregrond
-	for y in range(len(fg_data)):
-		for x in range(len(fg_data[y])):
+	for x in range(map_width):
+		# Consider the offset
+		true_x = x + start_x
+		# Ensure we are within bounds of the level
+		if true_x < 0 or true_x >= len(fg_data):
+			continue
+		for y in range(map_height):
+			if y >= len(fg_data[true_x]):
+				continue
 			# its valid if its not -1
-			value = fg_data[y][x]
-			# Ensure its non-negative, and within the bounds of allNames
-			if value >=0 and value < len(allNames):
-				map[x][y][value] = 1.0
+			value = fg_data[true_x][y]
+			# Ensure its non-negative, and within the bounds of objects (value is an index into objects_data)
+			if value >=0 and value < len(objects) and objects[value] >= 0:
+				map[x][y][objects[value]] = 1.0
 	# so this should be a tensor where we have x,y value, and at that x,y value we have the index of the object that is there
 	# or 0 if nothing is there
 	return map
@@ -260,25 +281,29 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				'objects': [{'coords': [x, y],
 							 'layer': 'BG' or 'FG',
 							 'name': str, # name of the object, which should be in the allNames list
+				'camera': int, the x value of the camera, used for its offset.
 				'''
 				# ————— Extract Data & Prepare Variables ————— #
 				bg_data = data["bg"]
 				fg_data = data["fg"]
 				objects_data = data["objects"]
+				thisStartX = int(data["camera"]) # jk this is actually called "camera"
 				map_length = 40 # Left to right
 				map_height = 15 # Top to bottom
 				# ————— Need to convert everything to tensors ————— #
 				#dataSplits = data.split("|")
-				currMap = server_process_godot_data(fg_data, bg_data, objects_data, allNames, map_length, map_height)
+				print("----------")
+				print(data)
+				print("----------")
+
+				currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
 
 				#currMap = StringToMap(dataSplits[0], allNames)
-				print("THIS IS INTENDED TO CRASH HERE")
-				thisStartX = int(dataSplits[1])
 				# ————— Retrain ————— #
 				if not prevMap == None and abs(thisStartX - prevStartX) < 30:
 					anyChange = False
 					differenceX = thisStartX - prevStartX
-					for x in range(0, 40):
+					for x in range(0, map_length):
 						if x + differenceX < 40 and x + differenceX >= 0:
 							for y in range(0, 15):
 								for z in range(0, len(actions)):
