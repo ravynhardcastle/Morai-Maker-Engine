@@ -34,6 +34,13 @@ window/stretch/aspect="expand"
 
 project/assembly_name="Morai Maker"
 
+[input]
+
+Click={
+"deadzone": 0.2,
+"events": []
+}
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

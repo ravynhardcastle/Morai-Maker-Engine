@@ -34,6 +34,8 @@ texture_filter = 1
 position = Vector2(-8, -143)
 texture = ExtResource("3_vgjrm")
 
-[node name="Collider" parent="HitDetection" parent_id_path=PackedInt32Array(1326608021) index="0" unique_id=255896861]
+[node name="HitDetection" parent="." index="2" unique_id=1326608021]
 position = Vector2(0, -80)
+
+[node name="Collider" parent="HitDetection" index="0" unique_id=255896861]
 shape = SubResource("RectangleShape2D_kj4na")

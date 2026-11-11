@@ -15,6 +15,7 @@ size = Vector2(16, 16)
 
 [node name="Tile" type="StaticBody2D" unique_id=1217813908 node_paths=PackedStringArray("sprite", "hit_detection")]
 visibility_layer = 17
+collision_mask = 5
 script = ExtResource("1_71op4")
 sprite = NodePath("Sprite")
 hit_detection = NodePath("HitDetection/Collider")
@@ -27,6 +28,9 @@ animation = &"idle"
 autoplay = "idle"
 
 [node name="HitDetection" type="Area2D" parent="." unique_id=1326608021]
+collision_layer = 4
+collision_mask = 3
+collision_priority = 2.0
 
 [node name="Collider" type="CollisionShape2D" parent="HitDetection" unique_id=255896861]
 shape = SubResource("RectangleShape2D_ux1dr")
