@@ -60,7 +60,7 @@ func _process(_delta: float) -> void:
 
 		
 func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], camera_position: int) -> void: # info in tile_map.gd
-    print("Sending game state to python server for calculation")
+	print("Sending game state to python server for calculation")
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings
 	var objects: Array
 	for object in objects_list:

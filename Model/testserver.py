@@ -147,8 +147,8 @@ def server_process_godot_data(fg_data, bg_data, objects_data, allNames, map_widt
 	objects = []
 	for object in objects_data:
 		# This name SHOULD be in this list
-		if object["Name"] in allNames:
-			objects.append(allNames.index(object["Name"]))
+		if object["name"] in allNames:
+			objects.append(allNames.index(object["name"]))
 	# Process the Background
 	for y in range(len(bg_data)):
 		for x in range(len(bg_data[y])):
@@ -257,9 +257,9 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				'''
 				{'bg': [[]], # where this contains a values of either -1 (nothing) or the index of whatever object is in this location, within the 'allNames" list (I assume)
 				'fg': [[]], # same as above, but for foreground objects,
-				'objects': [{'Coords': [x, y],
-							 'Layer': 'BG' or 'FG',
-							 'Name': str, # name of the object, which should be in the allNames list
+				'objects': [{'coords': [x, y],
+							 'layer': 'BG' or 'FG',
+							 'name': str, # name of the object, which should be in the allNames list
 				'''
 				# ————— Extract Data & Prepare Variables ————— #
 				bg_data = data["bg"]
@@ -269,10 +269,10 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				map_height = 15 # Top to bottom
 				# ————— Need to convert everything to tensors ————— #
 				#dataSplits = data.split("|")
-				currMap = server_process_godot_data(fg_data, bg_data, allNames, map_length, map_height)
+				currMap = server_process_godot_data(fg_data, bg_data, objects_data, allNames, map_length, map_height)
 
 				#currMap = StringToMap(dataSplits[0], allNames)
-
+				print("THIS IS INTENDED TO CRASH HERE")
 				thisStartX = int(dataSplits[1])
 				# ————— Retrain ————— #
 				if not prevMap == None and abs(thisStartX - prevStartX) < 30:
