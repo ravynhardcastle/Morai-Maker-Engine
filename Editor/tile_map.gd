@@ -4,7 +4,6 @@ extends Node2D
 # then of course remove that index from the deleted_objects list, and un-empty the entry in objects_list
 # TODO: Addition. When doing addition, compute the size and then check which cells would be changed by the addition.
 # If any are not -1, fail to do the addition
-# TODO: move the size calculation into a pre-cache step instead of doing it per-addition
 
 @export var layers: Array[TileMapLayer]
 @export var camera: Camera2D
@@ -24,7 +23,6 @@ var deleted_objects: Array[int] # an array of indexes of objects_list that are c
 var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
 var occupied_bg_grid: Array[Array]
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
-var object_size_map: Dictionary[StringName, Vector2i] # Dictionary that maps object names to their size, made when objects are first caluclated
 var select_pos: Vector2i: # the grid position you have selected
 	set(value):
 		select_pos = value
@@ -57,14 +55,14 @@ var select_pos: Vector2i: # the grid position you have selected
 						selected_object = occupied_bg_grid[select_pos.x][select_pos.y]
 			else:
 				selected_object = -1 # Nothing is selected
-			if selected_object == -1 or objects_list[selected_object].is_empty() or not object_size_map.has(objects_list[selected_object].name):
+			if selected_object == -1 or objects_list[selected_object].is_empty() or not Game.object_sizes.has(objects_list[selected_object].name):
 				select_rect = Rect2i(select_pos.x * tile_size as int,
 					select_pos.y * tile_size as int,
 					tile_size as int,
 					tile_size as int)
 			else:
 				var object: Dictionary = objects_list[selected_object]
-				var object_size: Vector2i = object_size_map[object.name]
+				var object_size: Vector2i = Game.object_sizes[object.name]
 				select_rect = Rect2i(object.coords.x * tile_size,
 						(object.coords.y - object_size.y + 1) * tile_size,
 						object_size.x * tile_size,
@@ -199,7 +197,6 @@ func generate_map() -> void:
 						objects.assign(tile.get_custom_data("RLObjects"))
 						if objects.is_empty():
 							add_to_grid.call(occupied_grid, coords, objects_list.size())
-							object_size_map[tile_name] = Vector2i.ONE
 							objects_list.append(new_object(tile_name, coords, layer_name))
 						else:
 							var object_name: StringName = tile_name # In the 1-size case, the object is always the same as the tile name.
@@ -222,23 +219,6 @@ func generate_map() -> void:
 							if objects[object_name] != Vector2i.ZERO: return # We only originate from 0,0
 							add_multitile.call(coords, object_name, Vector2i.ZERO, objects_list.size(), add_multitile)
 							
-							# To get the size, we compute times this index is seen horizontally and vertically
-							var x_times: int = 0
-							var y_times: int = 0
-							for x in occupied_grid.size():
-								var x_appended: bool = false
-								var y_record: int = 0
-								for y in occupied_grid[x].size():
-									var object_index = occupied_grid[x][y]
-									if object_index == objects_list.size():
-										if not x_appended:
-											x_times += 1
-											x_appended = true
-										y_record += 1
-								if y_record > y_times:
-									y_times = y_record
-									
-							object_size_map[object_name] = Vector2i(x_times, y_times)
 							if tile.get_custom_data("Loops"):
 								if tile.get_custom_data("Loops").x > 0:
 									for i in tile.get_custom_data("Loops").x:
@@ -246,7 +226,6 @@ func generate_map() -> void:
 								if tile.get_custom_data("Loops").y > 0:
 									for i in tile.get_custom_data("Loops").y:
 										add_multitile.call(coords - Vector2i(0, i + 1), object_name, Vector2i.ZERO, objects_list.size(), add_multitile)
-								object_size_map[object_name] = Vector2i.ONE + tile.get_custom_data("Loops")
 								
 							objects_list.append(new_object(object_name, coords, layer_name))
 			elif source is TileSetScenesCollectionSource:
