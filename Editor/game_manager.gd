@@ -6,11 +6,14 @@ var server: StreamPeerTCP
 var pending: Array
 var last_status: int = StreamPeerTCP.STATUS_NONE
 
+var object_sizes: Dictionary[StringName, Vector2i] # Object size by RL name
+
 var selected_tile: EditorTile:
 	set(new_tile):
 		if selected_tile:
 			selected_tile.selected = false
-		new_tile.selected = true
+		if new_tile:
+			new_tile.selected = true
 		selected_tile = new_tile
 		
 func _ready() -> void:
@@ -65,8 +68,10 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 	var objects: Array
 	for object in objects_list:
 		var clone: Dictionary = object.duplicate()
-		var coords: Vector2i = clone[&"coords"]
-		clone[&"coords"] = [coords.x, coords.y]
+		clone[&"coords"] = [-1, -1]
+		if object.has(&"coords"):
+			var coords: Vector2i = object[&"coords"]
+			clone[&"coords"] = [coords.x, coords.y]
 		objects.append(clone)
 
 	var data: Dictionary = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position}
