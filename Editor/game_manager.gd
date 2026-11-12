@@ -5,6 +5,7 @@ const RECEIVE_BYTES: int = 0
 var server: StreamPeerTCP
 var pending: Array
 var last_status: int = StreamPeerTCP.STATUS_NONE
+var bHasSentCache:bool = false
 
 var object_sizes: Dictionary[StringName, Vector2i] # Object size by RL name
 
@@ -34,6 +35,7 @@ func _process(_delta: float) -> void:
 		if status == StreamPeerTCP.STATUS_CONNECTED and !pending.is_empty():
 			send_state.callv(pending)
 			pending.clear()
+
 	
 	# —————————————————————————————————————————————————————————————————————
 	# ————— Division for where the Godot will be listening for data ————— #
@@ -53,6 +55,9 @@ func _process(_delta: float) -> void:
 		# For now im just looking for my 'msg' key, as thats all im sending LOL
 		var msg = data.get("msg")
 		if (msg): print(msg)
+		
+		var suggestions = data.get("suggestions")
+		if (suggestions): _on_receive_suggestion(suggestions)
 	else:
 		print("[Client] Failed to read server sent data")
 		
@@ -60,6 +65,21 @@ func _process(_delta: float) -> void:
 	
 	
 
+func _on_receive_suggestion(suggestion: Array) -> void:
+	# YIPPIE here you go!
+	# this SHOULD be called with the following:
+	'''
+	a List<Dict<>> where:
+		"coords" : (int, int), (x,y), the coordinates of the suggestion
+		"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
+		"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
+	'''
+	# is it fully correct... I was tired and didnt test everything, but for now lets just assume working untill proven otherwise ( ͡° ͜ʖ ͡°)
+	# if its helpful, I was thinking this could also send if its a fg or bg suggestion, just to make that very obvious
+	print("[Client] We received a suggestion from the server")
+	print(suggestion)
+	print("——————————————————————————————————————————————————")
+	
 
 		
 func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], camera_position: int) -> void: # info in tile_map.gd
@@ -74,7 +94,16 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 			clone[&"coords"] = [coords.x, coords.y]
 		objects.append(clone)
 
-	var data: Dictionary = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position}
+	# —————————————————————————————————————————————————————————————————————
+	# ————— Ensure that we only send the cache information once ————— #
+	# Yeah I know there is a better way to do this, but this is what im doing LOL
+	var data: Dictionary = {}
+	if (not bHasSentCache):
+		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position, "cache": object_sizes}
+		bHasSentCache = true
+	else:
+		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position}
+	# —————————————————————————————————————————————————————————————————————
 	var json: String = JSON.stringify(data)
 	var bytes: PackedByteArray = json.to_utf8_buffer()
 	

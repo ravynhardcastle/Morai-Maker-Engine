@@ -189,7 +189,18 @@ def server_process_godot_data(fg_data, bg_data, objects_data, start_x, allNames,
 	# so this should be a tensor where we have x,y value, and at that x,y value we have the index of the object that is there
 	# or 0 if nothing is there
 	return map
+def server_process_godot_cache(cache_data):
+	'''
+	The cache thats sent on the very first send of data, we will cache for use throughout the rest of the application
+	'''
 
+	# For now its just object sizes (since some stuff like pipes are 2x2)
+	object_sizes = {}
+	for name in cache_data:
+		size = cache_data[name] # this is a string in format "width,height"
+		size = size.strip("()").split(",")
+		object_sizes[name] = [int(size[0]), int(size[1])]
+	return object_sizes
 
 
 #endregion
@@ -248,9 +259,12 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	prevAction = None
 	prevStartX = -1
 	rejections = []  # HOLD ON TO ALL REJECTIONS. NEVER ADD AGAIN
+	object_sizes = {} # Initialize the cache
 	# WAIT FOR PROMPT
 	minimumInteractionConfidence = 0.01
 	confidenceDelta = 0.001
+	map_length = 40  # Left to right
+	map_height = 15  # Top to bottom
 	while 1:
 		try:
 			length = struct.unpack(">I", server_receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
@@ -262,12 +276,6 @@ def server_connection_handler(config: ServerConfig, socket, model):
 			data_payload = {'msg': "[Server-msg] Data received successfully!"}
 			server_send(data_payload, conn)
 			# ------------------------------------
-
-			print(len(data["objects"]), "objects")
-			print(data["objects"])
-			print("----------------------")
-			print(allNames)
-
 			if len(data) > 0:
 				# TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
 				# but it's a dictionary now
@@ -288,19 +296,14 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				fg_data = data["fg"]
 				objects_data = data["objects"]
 				thisStartX = int(data["camera"]) # jk this is actually called "camera"
-				map_length = 40 # Left to right
-				map_height = 15 # Top to bottom
+				if "cache" in data:
+					object_sizes = server_process_godot_cache(data["cache"])
 				# ————— Need to convert everything to tensors ————— #
-				#dataSplits = data.split("|")
-				print("----------")
-				print(data)
-				print("----------")
-
 				currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
 
 				#currMap = StringToMap(dataSplits[0], allNames)
 				# ————— Retrain ————— #
-				if not prevMap == None and abs(thisStartX - prevStartX) < 30:
+				if not prevMap == None and abs(thisStartX - prevStartX) < 30: # replace 30 with a threshold percentage!
 					anyChange = False
 					differenceX = thisStartX - prevStartX
 					for x in range(0, map_length):
@@ -323,16 +326,14 @@ def server_connection_handler(config: ServerConfig, socket, model):
 					if anyChange:
 						minimumInteractionConfidence += confidenceDelta
 						print("RETRAIN")
-						model.fit([prevMap],
-								  Y_targets=[prevAction],
+						model.fit(np.array([prevMap]),
+								  np.array([prevAction]),
 								  n_epoch=1,
 								  shuffle=False,
-								  show_metric=False,
-								  snapshot_epoch=False,
-								  batch_size=1,
-								  run_id='activeLearning')
+								  batch_size=1,)
 
-				predY = model.predict([currMap])
+				#predY = model.predict([currMap])
+				predY = model.predict(np.array([currMap]))
 				thisAction = GetEmptyMap(actions)
 
 				# REPLY
@@ -342,13 +343,13 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				maxVal = -1
 
 				sents = []
-				for x in range(0, 40):
-					for y in range(0, 15):
+				for x in range(0, map_length):
+					for y in range(0, map_height):
 						for z in range(0, len(actions)):
 							if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(
 									sents) < 30:
 								if not [actions[z], x + thisStartX, y] in rejections:
-									conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*")
+									#conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*") # Commenting out to try a different style
 									sents.append([x, y, z])
 									print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
 									rejections.append([actions[z], x + thisStartX, y])
@@ -361,14 +362,32 @@ def server_connection_handler(config: ServerConfig, socket, model):
 										maxToSend = [x, y, z, predY[0][x][y][z]]
 										maxVal = predY[0][x][y][z]
 				# MUST DO SOMETHING
-				if nothingSent:
-					thisAction[x][y][z] = minimumInteractionConfidence + confidenceDelta
-					sents.append([x, y, z])
+				if nothingSent and len(maxToSend) > 0:
+					thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
+					sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
+					conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*")
 					print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
-					conn.send(
-						str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(
-							maxToSend[3]) + "*")
-				conn.close()  # Close
+
+				# SLight change in format, all suggestions are gonna be sent at the very end!
+				# the format being chosen is:
+				'''
+				"coords" : (int, int), (x,y), the coordinates of the suggestion
+				"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
+				"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
+				'''
+				server_suggestions = []
+				for sent in sents:
+					server_suggestions.append({
+						"coords": (sent[0] + thisStartX, sent[1]),
+						"name": actions[sent[2]],
+						"size": object_sizes.get(actions[sent[2]]),  # default size is 1x1 if not found in cache
+						"confidence": float(predY[0][sent[0]][sent[1]][sent[2]])
+					})
+
+				# Yippie, time to send to Godot!
+				server_send({"suggestions": server_suggestions}, conn)
+
+				conn.close()  # Close (idk if I wanna close right here)
 
 				# PRINT MAP
 				'''
@@ -398,7 +417,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				prevMap = list(currMap)
 				prevAction = list(thisAction)
 				prevStartX = thisStartX
-				conn, addr = socket.accept()  # Reset
+				conn, addr = socket.accept()  # Reset (i dont think we actually want to do this?
 		except KeyboardInterrupt:
 			conn.close()
 			del conn
