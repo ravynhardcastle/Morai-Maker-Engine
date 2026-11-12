@@ -55,10 +55,47 @@ _data = {
 &"pulse": SubResource("Animation_u78we")
 }
 
+[sub_resource type="Animation" id="Animation_78vln"]
+length = 0.001
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:self_modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0),
+"transitions": PackedFloat32Array(1),
+"update": 0,
+"values": [Color(1, 1, 1, 1)]
+}
+
+[sub_resource type="Animation" id="Animation_ers08"]
+resource_name = "error"
+length = 0.39999999999999997
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath(".:self_modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.05, 0.4),
+"transitions": PackedFloat32Array(1, 1.4703373, 1),
+"update": 0,
+"values": [Color(1, 1, 1, 1), Color(1, 0, 0, 1), Color(1, 1, 1, 1)]
+}
+
+[sub_resource type="AnimationLibrary" id="AnimationLibrary_blexn"]
+_data = {
+&"RESET": SubResource("Animation_78vln"),
+&"error": SubResource("Animation_ers08")
+}
+
 [sub_resource type="CircleShape2D" id="CircleShape2D_ux1dr"]
 radius = 0.01
 
-[node name="TileMap" type="Node2D" unique_id=371769574 node_paths=PackedStringArray("layers", "camera", "grid", "camera_selection_sprite", "shadow_viewport", "shadow_rect", "selection_highlight", "cursor_collider")]
+[node name="TileMap" type="Node2D" unique_id=371769574 node_paths=PackedStringArray("layers", "camera", "grid", "camera_selection_sprite", "shadow_viewport", "shadow_rect", "selection_highlight", "cursor_collider", "error_highlight", "error_cooldown")]
 visibility_layer = 19
 texture_filter = 1
 scale = Vector2(3, 3)
@@ -72,6 +109,8 @@ shadow_viewport = NodePath("Shadows")
 shadow_rect = NodePath("ShadowRect")
 selection_highlight = NodePath("SelectionHighlight")
 cursor_collider = NodePath("Cursor")
+error_highlight = NodePath("SelectionHighlight/HighlightError")
+error_cooldown = NodePath("SelectionHighlight/ErorrCooldown")
 
 [node name="Camera" type="Camera2D" parent="." unique_id=1340960094]
 anchor_mode = 0
@@ -112,8 +151,10 @@ tile_set = ExtResource("2_18281")
 [node name="ShadowRect" type="ColorRect" parent="." unique_id=714741776]
 visibility_layer = 2
 material = SubResource("ShaderMaterial_kvcf2")
-offset_right = 4800.0
-offset_bottom = 480.0
+offset_left = -247.66667
+offset_top = 170.0
+offset_right = 4552.3335
+offset_bottom = 650.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 
@@ -137,7 +178,7 @@ render_target_update_mode = 4
 
 [node name="CameraSelectionSprite" type="Sprite2D" parent="." unique_id=1378626709]
 visibility_layer = 4
-position = Vector2(-16, -16)
+position = Vector2(-135.33334, -5.333333)
 texture = SubResource("GradientTexture2D_78vln")
 centered = false
 offset = Vector2(0, 16)
@@ -149,6 +190,13 @@ modulate = Color(1, 1, 1, 0.23529412)
 [node name="HighlightPulse" type="AnimationPlayer" parent="SelectionHighlight" unique_id=227980370]
 libraries/ = SubResource("AnimationLibrary_78vln")
 autoplay = &"pulse"
+
+[node name="HighlightError" type="AnimationPlayer" parent="SelectionHighlight" unique_id=1574023818]
+libraries/ = SubResource("AnimationLibrary_blexn")
+
+[node name="ErorrCooldown" type="Timer" parent="SelectionHighlight" unique_id=1444365283]
+wait_time = 0.4
+one_shot = true
 
 [node name="Cursor" type="Area2D" parent="." unique_id=376332589]
 collision_layer = 0

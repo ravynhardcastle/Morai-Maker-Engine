@@ -35,20 +35,26 @@ func _ready() -> void:
 			for y in pattern.get_size().y:
 				if !pattern.has_cell(Vector2(x, y)): continue
 				cell_source = pattern.get_cell_source_id(Vector2(x, y))
-				var source: TileSetSource = tileset.get_source(cell_source)
-				if source is TileSetAtlasSource:
-					# We can check top left for this since all duplicates are on the bottom left
-					var tile_atlas_coords: Vector2i = pattern.get_cell_atlas_coords(Vector2i(x, y))
-					var tile_alternative_tile: int = pattern.get_cell_alternative_tile(Vector2i(x, y))
-					var tile: TileData = source.get_tile_data(tile_atlas_coords, tile_alternative_tile)
-					var tile_name: StringName = tile.get_custom_data("RLName")
-					if tile_name.contains("&"):
-						# We're measuring the top left here, so if there's ever a conflict, it has to be the one to the right of the '&'
-						# Since taller is prioritized before the &
-						tile_name = tile_name.split("&")[1]
-					if tile_name:
-						placeable_to_rl_name[pattern] = tile_name
-				if cell_source != -1: break
+				if cell_source != -1:
+					var source: TileSetSource = tileset.get_source(cell_source)
+					if source is TileSetAtlasSource:
+						# We can check top left for this since all duplicates are on the bottom left
+						var tile_atlas_coords: Vector2i = pattern.get_cell_atlas_coords(Vector2i(x, y))
+						var tile_alternative_tile: int = pattern.get_cell_alternative_tile(Vector2i(x, y))
+						var tile: TileData = source.get_tile_data(tile_atlas_coords, tile_alternative_tile)
+						var tile_name: StringName = tile.get_custom_data("RLName")
+						if tile_name.contains("&"):
+							# We're measuring the top left here, so if there's ever a conflict, it has to be the one to the right of the '&'
+							# Since taller is prioritized before the &
+							tile_name = tile_name.split("&")[1]
+						if tile_name:
+							placeable_to_rl_name[pattern] = tile_name
+					elif source is TileSetScenesCollectionSource:
+						var tile_id: int = pattern.get_cell_alternative_tile(Vector2i(x, y))
+						var tile: Tile = source.get_scene_tile_scene(tile_id).instantiate()
+						placeable_to_rl_name[pattern] = tile.rl_name
+						tile.queue_free()
+					break
 			if cell_source != -1: break
 		placeables[cell_source].append(i)
 		
@@ -59,6 +65,10 @@ func _ready() -> void:
 	change_placeables()
 	
 	Game.object_sizes = object_sizes
+	var rl_name_to_placeable: Dictionary[StringName, TileMapPattern]
+	for placeable in placeable_to_rl_name:
+		rl_name_to_placeable[placeable_to_rl_name[placeable]] = placeable
+	Game.rl_name_to_placeable = rl_name_to_placeable
 		
 func _tab_changed(new_tab: String) -> void:
 	if tab == new_tab:
@@ -72,6 +82,7 @@ func _tab_changed(new_tab: String) -> void:
 	
 func render_placeables() -> void:
 	for tab_title in tab_by_title.keys():
+		var fg: bool = tab_title.to_lower() != "decorative" # Currently, hardcoded to be the only background layer
 		var new_placeables: Array = placeables[tile_set_sources[tab_title.to_lower()]] # Array[int]
 		var source: TileSetSource = tileset.get_source(tile_set_sources[tab_title.to_lower()])
 		var tile_size_rect: Rect2i = Rect2i(0, 0, tileset.tile_size.x, tileset.tile_size.y)
@@ -79,9 +90,11 @@ func render_placeables() -> void:
 			var placeable: TileMapPattern = tileset.get_pattern(placeable_index)
 			var _size: Vector2i = placeable.get_size()
 			var image: Image = Image.create(_size.x * tileset.tile_size.x, _size.y * tileset.tile_size.y, false, Image.FORMAT_RGBA8)
+			var tile_name: StringName
 			if source is TileSetAtlasSource:
 				if placeable_to_rl_name.has(placeable):
-					object_sizes[placeable_to_rl_name[placeable]] = _size
+					tile_name = placeable_to_rl_name[placeable]
+					object_sizes[tile_name] = _size
 				for x in _size.x:
 					for y in _size.y:
 						var tile_coords: Vector2i = placeable.get_cell_atlas_coords(Vector2i(x, y))
@@ -94,14 +107,16 @@ func render_placeables() -> void:
 				var tile_id: int = placeable.get_cell_alternative_tile(Vector2.ZERO)
 				var tile: Tile = source.get_scene_tile_scene(tile_id).instantiate()
 				image = tile.get_image()
-				if tile.rl_name != "":
-					object_sizes[tile.rl_name] = tile.get_size(tileset.tile_size.x)
+				tile_name = tile.rl_name
+				if tile_name != "":
+					object_sizes[tile_name] = tile.get_size(tileset.tile_size.x)
 				tile.queue_free() # i don't wanna play with you anymore...
 					
 			image = pad_image(image)
 			var texture: ImageTexture = ImageTexture.create_from_image(image)
 			var curr_tile: EditorTile = editor_tile.instantiate()
-			curr_tile.init(texture, tileset.tile_size, tile_scale)
+			curr_tile.init(texture, tileset.tile_size, tile_scale, tile_name, fg)
+			Game.rl_name_scene[tile_name] = source is TileSetScenesCollectionSource
 			
 			tab_tiles[tab_title.to_lower()].append(curr_tile)
 

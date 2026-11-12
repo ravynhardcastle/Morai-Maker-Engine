@@ -8,6 +8,8 @@ var last_status: int = StreamPeerTCP.STATUS_NONE
 var bHasSentCache:bool = false
 
 var object_sizes: Dictionary[StringName, Vector2i] # Object size by RL name
+var rl_name_to_placeable: Dictionary[StringName, TileMapPattern]
+var rl_name_scene: Dictionary[StringName, bool] # Whether or not a tile is a scenes
 
 var selected_tile: EditorTile:
 	set(new_tile):

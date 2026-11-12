@@ -14,6 +14,8 @@ extends Node2D
 @export var shadow_rect: ColorRect
 @export var selection_highlight: Node2D
 @export var cursor_collider: Area2D
+@export var error_highlight: AnimationPlayer
+@export var error_cooldown: Timer
 @onready var fg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "ForegroundLayer")]
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
 @onready var grid_size: Vector2 = fg_layer.get_used_rect().size
@@ -29,7 +31,12 @@ var select_pos: Vector2i: # the grid position you have selected
 		# You may be asking: Why don't we just use the occupied grid directly always?
 		# Well, we probably could do something efficient that doesn't check for collisions at all,
 		# but we need to differentiate between FG and BG anyways, so I use this approach
-		if not cursor_collider.get_overlapping_areas().is_empty():
+		var selecting_fg: bool = false # Whether we're selecting a foreground block
+		var selecting: bool = false # Whether we're selecting anything at all
+		if Game.selected_tile and Game.selected_tile.tile:
+			selecting_fg = Game.selected_tile.fg
+			selecting = true
+		if not cursor_collider.get_overlapping_areas().is_empty() and (selecting_fg or not selecting):
 			# Ideally this would only run whenever the select_pos actually changes, to simplify computation
 			# However when you move the mouse really fast sometimes this isn't reliable
 			var object_area: Area2D = cursor_collider.get_overlapping_areas()[0]
@@ -50,16 +57,25 @@ var select_pos: Vector2i: # the grid position you have selected
 					layer = &"BG"
 				if tile:
 					if layer == &"FG":
-						selected_object = occupied_fg_grid[select_pos.x][select_pos.y]
+						if selecting and !selecting_fg: selected_object = -1
+						else: selected_object = occupied_fg_grid[select_pos.x][select_pos.y]
 					else:
-						selected_object = occupied_bg_grid[select_pos.x][select_pos.y]
+						if selecting and selecting_fg: selected_object = -1
+						else: selected_object = occupied_bg_grid[select_pos.x][select_pos.y]
 			else:
 				selected_object = -1 # Nothing is selected
 			if selected_object == -1 or objects_list[selected_object].is_empty() or not Game.object_sizes.has(objects_list[selected_object].name):
-				select_rect = Rect2i(select_pos.x * tile_size as int,
-					select_pos.y * tile_size as int,
-					tile_size as int,
-					tile_size as int)
+				if Game.selected_tile and Game.selected_tile.tile != "":
+					var selected_tile_size: Vector2i = Game.object_sizes[Game.selected_tile.tile]
+					select_rect = Rect2i(select_pos.x * tile_size as int,
+							select_pos.y * tile_size as int + tile_size,
+							selected_tile_size.x * tile_size as int,
+							-selected_tile_size.y * tile_size as int)
+				else:
+					select_rect = Rect2i(select_pos.x * tile_size as int,
+						select_pos.y * tile_size as int,
+						tile_size as int,
+						tile_size as int)
 			else:
 				var object: Dictionary = objects_list[selected_object]
 				var object_size: Vector2i = Game.object_sizes[object.name]
@@ -105,7 +121,11 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_LEFT:
-			pass #place
+			if selected_object != -1 or not Game.selected_tile or not Game.selected_tile.tile:
+				highlight_error()
+				return
+			place_object(Game.selected_tile.tile, select_pos, Game.selected_tile.fg, true)
+			
 		elif event.button_mask == MOUSE_BUTTON_RIGHT:
 			delete_object(selected_object)
 	
@@ -134,6 +154,50 @@ func _on_end_turn_button_pressed() -> void:
 
 func _on_selection_highlight_draw() -> void:
 	selection_highlight.draw_rect(select_rect, Color.WHITE, true)
+
+func highlight_error():
+	if error_cooldown.time_left == 0:
+		error_highlight.play("error")
+		error_cooldown.start()
+
+func place_object(tile: StringName, pos: Vector2i, fg: bool, user: bool = false) -> bool:
+	var selected_size: Vector2i = Game.object_sizes[tile]
+	var occupied_grid: Array[Array] = occupied_fg_grid if fg else occupied_bg_grid
+	var layer: TileMapLayer = fg_layer if fg else bg_layer
+	var fill_grid: Array[Vector2i]
+	for x in selected_size.x:
+		for y in selected_size.y:
+			fill_grid.append(Vector2i(pos.x + x, pos.y - y))
+			if occupied_grid[pos.x + x][pos.y - y] != -1:
+				if user: highlight_error()
+				return false
+	
+	# Okay, it's a valid placement position, you got me
+	var index: int
+	# WARNING: If this ends up fucking up the model, REMOVE THIS
+	# We are recycling deleted indexes. This might be a bad thing for learning, actually!
+	if not deleted_objects.is_empty():
+		deleted_objects.sort()
+		index = deleted_objects.pop_front()
+	else:
+		index = objects_list.size()
+		objects_list.append({})
+	
+	objects_list[index] = new_object(tile, pos, &"FG" if fg else &"BG")
+	
+	for cell: Vector2i in fill_grid:
+		occupied_grid[cell.x][cell.y] = index
+	
+	# If it's a scene, we can just place it because it's already initialized bottom left
+	# If it's not a scene, then we need to adjust its origin to account for the pattern being originated top right
+	layer.set_pattern(pos - Vector2i(0, (selected_size.y - 1) if not Game.rl_name_scene[tile] else 0),
+			Game.rl_name_to_placeable[tile])
+	
+	if user:
+		error_cooldown.start() # To make dragging tiles not error
+		error_highlight.play("RESET")
+	
+	return true
 
 func generate_map() -> void:
 	# This would be better as a Resource, of course, but I'm doing it as a Dictionary for easier JSONifying to send to python
