@@ -95,6 +95,7 @@ func _ready() -> void:
 	RenderingServer.frame_pre_draw.connect(_sync_shadow_transform)
 	RenderingServer.frame_pre_draw.connect(_sync_cursor)
 	generate_map()
+	Game.receive_suggestion.connect(_on_receive_suggestion)
 
 func _physics_process(_delta: float) -> void:
 	# Highlight the tile / semantic object you're selecting
@@ -122,7 +123,8 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
 		if event.button_mask == MOUSE_BUTTON_LEFT:
 			if selected_object != -1 or not Game.selected_tile or not Game.selected_tile.tile:
-				highlight_error()
+				if Game.selected_tile != null:
+					highlight_error()
 				return
 			place_object(Game.selected_tile.tile, select_pos, Game.selected_tile.fg, true)
 			
@@ -154,6 +156,9 @@ func _on_end_turn_button_pressed() -> void:
 
 func _on_selection_highlight_draw() -> void:
 	selection_highlight.draw_rect(select_rect, Color.WHITE, true)
+	
+func _on_receive_suggestion(tile: StringName, coords: Vector2i):
+	place_object(tile, coords, Game.fg_objects.has(tile))
 
 func highlight_error():
 	if error_cooldown.time_left == 0:
@@ -169,7 +174,11 @@ func place_object(tile: StringName, pos: Vector2i, fg: bool, user: bool = false)
 		for y in selected_size.y:
 			fill_grid.append(Vector2i(pos.x + x, pos.y - y))
 			if occupied_grid[pos.x + x][pos.y - y] != -1:
-				if user: highlight_error()
+				if user:
+					highlight_error()
+				else:
+					print("Object failed to place!")
+					push_error("RL sent incorrect tile: " + tile + " at " + str(pos))
 				return false
 	
 	# Okay, it's a valid placement position, you got me

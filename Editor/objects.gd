@@ -118,6 +118,8 @@ func render_placeables() -> void:
 			curr_tile.init(texture, tileset.tile_size, tile_scale, tile_name, fg)
 			Game.rl_name_scene[tile_name] = source is TileSetScenesCollectionSource
 			
+			if fg: Game.fg_objects.append(tile_name)
+			
 			tab_tiles[tab_title.to_lower()].append(curr_tile)
 
 func change_placeables(new_tab: String = tab) -> void:

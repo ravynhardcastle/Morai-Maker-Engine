@@ -151,10 +151,8 @@ tile_set = ExtResource("2_18281")
 [node name="ShadowRect" type="ColorRect" parent="." unique_id=714741776]
 visibility_layer = 2
 material = SubResource("ShaderMaterial_kvcf2")
-offset_left = -247.66667
-offset_top = 170.0
-offset_right = 4552.3335
-offset_bottom = 650.0
+offset_right = 4800.0
+offset_bottom = 480.0
 size_flags_horizontal = 3
 size_flags_vertical = 3
 

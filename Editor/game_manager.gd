@@ -11,6 +11,11 @@ var object_sizes: Dictionary[StringName, Vector2i] # Object size by RL name
 var rl_name_to_placeable: Dictionary[StringName, TileMapPattern]
 var rl_name_scene: Dictionary[StringName, bool] # Whether or not a tile is a scenes
 
+var fg_objects: Array[StringName] # List of objects that are in the foreground
+
+signal receive_suggestion(tile: StringName, coords: Vector2i)
+var last_suggestion: Array[Dictionary] # Most recent suggestion given
+
 var selected_tile: EditorTile:
 	set(new_tile):
 		if selected_tile:
@@ -81,6 +86,11 @@ func _on_receive_suggestion(suggestion: Array) -> void:
 	print("[Client] We received a suggestion from the server")
 	print(suggestion)
 	print("——————————————————————————————————————————————————")
+	last_suggestion = suggestion
+	for suggest: Dictionary in suggestion:
+		var tile: StringName = suggest.name
+		var coords: Vector2i = Vector2i(suggest.coords[0], suggest.coords[1])
+		receive_suggestion.emit(tile, coords)
 	
 
 		
