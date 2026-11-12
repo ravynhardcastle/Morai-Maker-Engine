@@ -81,12 +81,12 @@ func _on_receive_suggestion(suggestion: Array) -> void:
 		"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
 		"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
 	'''
-	# is it fully correct... I was tired and didnt test everything, but for now lets just assume working untill proven otherwise ( ͡° ͜ʖ ͡°)
+	# is it fully correct.bjects_list[suggest.object_index].name == suggest... I was tired and didnt test everything, but for now lets just assume working untill proven otherwise ( ͡° ͜ʖ ͡°)
 	# if its helpful, I was thinking this could also send if its a fg or bg suggestion, just to make that very obvious
 	print("[Client] We received a suggestion from the server")
 	print(suggestion)
 	print("——————————————————————————————————————————————————")
-	last_suggestion = suggestion
+	last_suggestion = [] # Empty it out, it gets defined in tile_map.gd
 	for suggest: Dictionary in suggestion:
 		var tile: StringName = suggest.name
 		var coords: Vector2i = Vector2i(suggest.coords[0], suggest.coords[1])

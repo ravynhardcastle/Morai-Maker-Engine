@@ -24,6 +24,10 @@ var objects_list: Array[Dictionary] # of which the dictionary contains Name: Nam
 var deleted_objects: Array[int] # an array of indexes of objects_list that are currently empty from deletion
 var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
 var occupied_bg_grid: Array[Array]
+var last_object_index: int # The last index for a placed object
+
+var saved_objects_list: Array[Dictionary] = objects_list.duplicate()
+
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
 var select_pos: Vector2i: # the grid position you have selected
 	set(value):
@@ -118,6 +122,33 @@ func _process(delta: float) -> void:
 
 	camera_selection_sprite.queue_redraw()
 	camera_selection_sprite.position = ((camera.get_screen_center_position() - camera.get_viewport_rect().size / 2) - Vector2(tile_size * 3, tile_size/2)) / (scale * 2)
+
+func _on_run_button_pressed() -> void:
+	# TODO: run simulator
+	pass
+
+func _on_save_button_pressed() -> void:
+	saved_objects_list = objects_list.duplicate()
+
+func _on_load_button_pressed() -> void:
+	clear()
+	for object: Dictionary in saved_objects_list:
+		place_object(object.name, object.coords)
+
+func _on_clear_button_pressed() -> void:
+	clear()
+
+func _on_remove_button_pressed() -> void:
+	for suggest: Dictionary in Game.last_suggestion:
+		var object: Dictionary = objects_list[suggest.object_index]
+		if object:
+			if object.name == suggest.name and object.coords == suggest.coords:
+				delete_object(suggest.object_index)
+
+func _on_end_button_pressed() -> void:
+	# TODO: Save something here
+	get_tree().quit()
+
 	
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
@@ -158,14 +189,17 @@ func _on_selection_highlight_draw() -> void:
 	selection_highlight.draw_rect(select_rect, Color.WHITE, true)
 	
 func _on_receive_suggestion(tile: StringName, coords: Vector2i):
-	place_object(tile, coords, Game.fg_objects.has(tile))
+	place_object(tile, coords)
+	Game.last_suggestion.append({"name": tile, "coords": coords, "object_index": last_object_index})
 
 func highlight_error():
 	if error_cooldown.time_left == 0:
 		error_highlight.play("error")
 		error_cooldown.start()
 
-func place_object(tile: StringName, pos: Vector2i, fg: bool, user: bool = false) -> bool:
+func place_object(tile: StringName, pos: Vector2i, fg = null, user: bool = false) -> bool:
+	if fg == null: fg = Game.fg_objects.has(tile)
+	
 	var selected_size: Vector2i = Game.object_sizes[tile]
 	var occupied_grid: Array[Array] = occupied_fg_grid if fg else occupied_bg_grid
 	var layer: TileMapLayer = fg_layer if fg else bg_layer
@@ -191,6 +225,8 @@ func place_object(tile: StringName, pos: Vector2i, fg: bool, user: bool = false)
 	else:
 		index = objects_list.size()
 		objects_list.append({})
+		
+	last_object_index = index
 	
 	objects_list[index] = new_object(tile, pos, &"FG" if fg else &"BG")
 	
@@ -348,11 +384,11 @@ func get_scene_info(source: TileSetScenesCollectionSource, scene_id: int) -> Dic
 func new_object(_name: StringName, coords: Vector2i, layer: StringName) -> Dictionary:
 	return {&"name": _name, &"coords": coords, &"layer": layer}
 
-func delete_object(object) -> void:
-	if objects_list[object].is_empty(): return # already deleted!
-	if object == -1: return # trying to delete an empty tile!
-	var layer_name: StringName = objects_list[object].layer
-	objects_list[object] = {}
+func delete_object(object_index: int) -> void:
+	if objects_list[object_index].is_empty(): return # already deleted!
+	if object_index == -1: return # trying to delete an empty tile!
+	var layer_name: StringName = objects_list[object_index].layer
+	objects_list[object_index] = {}
 	var occupied_grid: Array[Array]
 	var layer: TileMapLayer
 	if layer_name == &"FG":
@@ -366,11 +402,15 @@ func delete_object(object) -> void:
 	
 	for x: int in occupied_grid.size():
 		for y: int in occupied_grid[x].size():
-			if occupied_grid[x][y] == object:
+			if occupied_grid[x][y] == object_index:
 				occupied_grid[x][y] = -1
 				delete_coords.append(Vector2i(x, y))
 				
 	for coords: Vector2i in delete_coords:
 		layer.set_cell(coords) # delete the tile at this cell
 		
-	deleted_objects.append(object)
+	deleted_objects.append(object_index)
+	
+func clear() -> void:
+	for object: int in objects_list.size():
+		delete_object(object)
