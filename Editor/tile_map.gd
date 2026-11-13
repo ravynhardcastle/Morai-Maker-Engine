@@ -31,7 +31,7 @@ var saved_objects_list: Array[Dictionary] = objects_list.duplicate()
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
 var select_pos: Vector2i: # the grid position you have selected
 	set(value):
-		select_pos = value
+		select_pos = clamp(value, Vector2i.ZERO, fg_layer.get_used_rect().size - Vector2i.ONE * 3)
 		# You may be asking: Why don't we just use the occupied grid directly always?
 		# Well, we probably could do something efficient that doesn't check for collisions at all,
 		# but we need to differentiate between FG and BG anyways, so I use this approach
