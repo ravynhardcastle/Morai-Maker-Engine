@@ -5,6 +5,7 @@ extends ScrollContainer
 @export var tiles: HBoxContainer
 @export var tile_scale: int
 @export var outline_padding: int # padding for the outline shader
+@export var include_non_rl: bool
 @onready var layers: Array[TileMapLayer] = tilemap.layers
 @onready var tileset: TileSet = tilemap.fg_layer.tile_set # The tile set is the same among all layers
 @onready var editor_tile: PackedScene = preload("res://Tiles/editor_tile.tscn")
@@ -31,6 +32,7 @@ func _ready() -> void:
 	for i in tileset.get_patterns_count():
 		var pattern: TileMapPattern = tileset.get_pattern(i)
 		var cell_source: int = -1
+		var cell_rl_found: bool = false
 		for x in pattern.get_size().x:
 			for y in pattern.get_size().y:
 				if !pattern.has_cell(Vector2(x, y)): continue
@@ -43,6 +45,8 @@ func _ready() -> void:
 						var tile_alternative_tile: int = pattern.get_cell_alternative_tile(Vector2i(x, y))
 						var tile: TileData = source.get_tile_data(tile_atlas_coords, tile_alternative_tile)
 						var tile_name: StringName = tile.get_custom_data("RLName")
+						if tile_name:
+							cell_rl_found = true
 						if tile_name.contains("&"):
 							# We're measuring the top left here, so if there's ever a conflict, it has to be the one to the right of the '&'
 							# Since taller is prioritized before the &
@@ -52,11 +56,15 @@ func _ready() -> void:
 					elif source is TileSetScenesCollectionSource:
 						var tile_id: int = pattern.get_cell_alternative_tile(Vector2i(x, y))
 						var tile: Tile = source.get_scene_tile_scene(tile_id).instantiate()
+						if tile.rl_name:
+							cell_rl_found = true
 						placeable_to_rl_name[pattern] = tile.rl_name
 						tile.queue_free()
 					break
 			if cell_source != -1: break
-		placeables[cell_source].append(i)
+		if include_non_rl or cell_rl_found:
+			placeables[cell_source].append(i)
+		else: placeable_to_rl_name.erase(pattern)
 		
 	for tab_button: Button in tabs:
 		tab_button.button_down.connect(_tab_changed.bind(tab_button.text.to_lower()))
@@ -92,7 +100,7 @@ func render_placeables() -> void:
 			# Every example has the same tilesize among a placeable. This might be a false assumption later
 			var placeable_tile_size: Vector2i = Vector2i.ONE
 			if source is TileSetAtlasSource:
-				placeable_tile_size = source.get_tile_size_in_atlas(placeable.get_cell_atlas_coords(Vector2i.ZERO))
+				placeable_tile_size = source.get_tile_size_in_atlas(placeable.get_cell_atlas_coords(Vector2i(0, _size.y - 1))) # bottom left is always corrects
 			var image: Image = Image.create(_size.x * tileset.tile_size.x * placeable_tile_size.x, _size.y * tileset.tile_size.y * placeable_tile_size.y, false, Image.FORMAT_RGBA8)
 			var tile_name: StringName
 			if source is TileSetAtlasSource:
