@@ -150,10 +150,10 @@ def server_process_godot_data(fg_data, bg_data, objects_data, start_x, allNames,
 	objects = []
 	for object in objects_data:
 		# This name SHOULD be in this list
-		if object["name"] in allNames:
+		if object.get("name") in allNames:
 			objects.append(allNames.index(object["name"]))
 		else:
-			# Keep the positions lined up with objects_data, so unknown names get -1 instead of being skipped
+			# cause -1 means nothing is there
 			objects.append(-1)
 	# Process the Background
 	for x in range(map_width):
@@ -197,12 +197,43 @@ def server_process_godot_cache(cache_data):
 	# For now its just object sizes (since some stuff like pipes are 2x2)
 	object_sizes = {}
 	for name in cache_data:
-		size = cache_data[name] # this is a string in format "width,height"
+		size = cache_data[name] # this is a string in format "(width,height)"
 		size = size.strip("()").split(",")
 		object_sizes[name] = [int(size[0]), int(size[1])]
 	return object_sizes
+def server_check_tile_placement(tile, pos, occupied_grid, object_sizes):
+	# pretty much the copy from the Godot implementation + adding a bounds check
+	# Get the size of the tile we are trying to check
+	selected_size = object_sizes[tile]
+	fill_grid = []
+	for x in range(selected_size[0]):
+		for y in range(selected_size[1]):
+			fill_grid.append((pos[0] + x, pos[1] - y))
+			# Out of bounds check to make sure the placement doesnt go.. well.. out of bounds
+			if pos[0] + x < 0 or pos[0] + x >= len(occupied_grid) or pos[1] - y < 0 or pos[1] - y >= len(occupied_grid[pos[0] + x]):
+				return None
+			# if we hit anything other than a "-1", then we know this is trying to place overtop of another object
+			if occupied_grid[pos[0] + x][pos[1] - y] != -1:
+				return None
 
+	# if we successfully return this, we have a List<(x,y)> of all the positions that this tile would occupy
+	return fill_grid
+def server_fill_placement(fill_grid, occupied_grid):
+	for cell in fill_grid:
+		occupied_grid[cell[0]][cell[1]] = 0 # just not -1, to show SOMETHING is here
+def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_x, actions, map_width:int=40, map_height:int=15):
 
+	mask = np.zeros((map_width, map_height, len(actions)), dtype=bool)
+	for x in range(map_width):
+		for y in range(map_height):
+			for z in range(len(actions)):
+				tile = actions[z]
+				if tile not in object_sizes or tile not in object_layers:
+					continue # safe guard against.. well weird cases
+				fg = object_layers[tile] == "fg"
+				occupied_grid = fg_grid if fg else bg_grid
+				mask[x][y][z] = server_check_tile_placement(tile, (x + start_x, y), occupied_grid, object_sizes) is not None
+	return mask
 #endregion
 # ————— END New Implementation ————— #
 
@@ -259,8 +290,12 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	prevAction = None
 	prevStartX = -1
 	rejections = []  # HOLD ON TO ALL REJECTIONS. NEVER ADD AGAIN
+	# ————— Caches ————— #
 	object_sizes = {} # Initialize the cache
+	object_layers = {} # Initialize the cache
+	# ————— END Caches ————— #
 	# WAIT FOR PROMPT
+
 	minimumInteractionConfidence = 0.01
 	confidenceDelta = 0.001
 	map_length = 40  # Left to right
@@ -295,12 +330,20 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				bg_data = data["bg"]
 				fg_data = data["fg"]
 				objects_data = data["objects"]
+				# Fill the object_layers "cache" (its not really a cache I know)
+				for object in objects_data:
+					if "name" in object and "layer" in object:
+						object_layers[object["name"]] = object["layer"]
 				thisStartX = int(data["camera"]) # jk this is actually called "camera"
 				if "cache" in data:
 					object_sizes = server_process_godot_cache(data["cache"])
 				# ————— Need to convert everything to tensors ————— #
 				currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
-
+				# ————— Action Masking ————— #
+				# making a copy, since these get modified and I dont wanna mess up the main ones
+				fg_grid = [column[:] for column in fg_data]
+				bg_grid = [column[:] for column in bg_data]
+				actionMask = server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, thisStartX, actions, map_length, map_height)
 				#currMap = StringToMap(dataSplits[0], allNames)
 				# ————— Retrain ————— #
 				if not prevMap == None and abs(thisStartX - prevStartX) < 30: # replace 30 with a threshold percentage!
@@ -328,7 +371,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 						print("RETRAIN")
 						model.fit(np.array([prevMap]),
 								  np.array([prevAction]),
-								  n_epoch=1,
+								  epochs=1,
 								  shuffle=False,
 								  batch_size=1,)
 
@@ -346,10 +389,21 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				for x in range(0, map_length):
 					for y in range(0, map_height):
 						for z in range(0, len(actions)):
-							if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(
-									sents) < 30:
+							if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(sents) < 30 and actionMask[x][y][z]:
 								if not [actions[z], x + thisStartX, y] in rejections:
 									#conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*") # Commenting out to try a different style
+
+									# ACTION MASKING, MAKE SURE WE NOTE THAT WE ARE CLAIMING SPACE
+									# We try to claim the space (if we can)
+									placed_grid = fg_grid if object_layers[actions[z]] == "fg" else bg_grid
+									fill_grid = server_check_tile_placement(actions[z], (x + thisStartX, y), placed_grid, object_sizes)
+									# nah, cant do it
+									if fill_grid is None:
+										continue
+									# fill our local grid so we dont try to play ontop of it later
+									server_fill_placement(fill_grid, placed_grid)
+									# END ACTION MASKING INCLUSION ————————————————————————————————
+
 									sents.append([x, y, z])
 									print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
 									rejections.append([actions[z], x + thisStartX, y])
@@ -357,7 +411,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 									thisAction[x][y][z] = predY[0][x][y][z]
 									nothingSent = False
 							elif nothingSent:
-								if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1:
+								if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1 and actionMask[x][y][z]:
 									if not [actions[z], x + thisStartX, y] in rejections:
 										maxToSend = [x, y, z, predY[0][x][y][z]]
 										maxVal = predY[0][x][y][z]
@@ -365,6 +419,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				if nothingSent and len(maxToSend) > 0:
 					thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
 					sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
+					#rejections.append([actions[maxToSend[2]], maxToSend[0] + thisStartX, maxToSend[1]]) # Do we need to do this? im unsure
 					conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*")
 					print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
 
@@ -374,6 +429,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				"coords" : (int, int), (x,y), the coordinates of the suggestion
 				"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
 				"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
+				"confidence" : float, the confidence of the suggestion, from the model
 				'''
 				server_suggestions = []
 				for sent in sents:
@@ -387,7 +443,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				# Yippie, time to send to Godot!
 				server_send({"suggestions": server_suggestions}, conn)
 
-				conn.close()  # Close (idk if I wanna close right here)
+				#conn.close()  # Close (idk if I wanna close right here LOL no we dont)
 
 				# PRINT MAP
 				'''
@@ -417,7 +473,12 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				prevMap = list(currMap)
 				prevAction = list(thisAction)
 				prevStartX = thisStartX
-				conn, addr = socket.accept()  # Reset (i dont think we actually want to do this?
+				#conn, addr = socket.accept()  # Reset (i dont think we actually want to do this? NOPE we dont lol)
+		except ConnectionError as e:
+			print(f"[Server] Connection error: {e}. CLosing Connection")
+			conn.close()
+			del conn
+			break
 		except KeyboardInterrupt:
 			conn.close()
 			del conn

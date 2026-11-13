@@ -198,6 +198,7 @@ func highlight_error():
 		error_cooldown.start()
 
 func place_object(tile: StringName, pos: Vector2i, fg = null, user: bool = false) -> bool:
+	print("Attempting to place object....")
 	if fg == null: fg = Game.fg_objects.has(tile)
 	
 	var selected_size: Vector2i = Game.object_sizes[tile]
@@ -241,7 +242,7 @@ func place_object(tile: StringName, pos: Vector2i, fg = null, user: bool = false
 	if user:
 		error_cooldown.start() # To make dragging tiles not error
 		error_highlight.play("RESET")
-	
+	print("Placed Object!")
 	return true
 
 func generate_map() -> void:
