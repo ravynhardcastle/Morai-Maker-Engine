@@ -89,7 +89,11 @@ func render_placeables() -> void:
 		for placeable_index: int in new_placeables:
 			var placeable: TileMapPattern = tileset.get_pattern(placeable_index)
 			var _size: Vector2i = placeable.get_size()
-			var image: Image = Image.create(_size.x * tileset.tile_size.x, _size.y * tileset.tile_size.y, false, Image.FORMAT_RGBA8)
+			# Every example has the same tilesize among a placeable. This might be a false assumption later
+			var placeable_tile_size: Vector2i = Vector2i.ONE
+			if source is TileSetAtlasSource:
+				placeable_tile_size = source.get_tile_size_in_atlas(placeable.get_cell_atlas_coords(Vector2i.ZERO))
+			var image: Image = Image.create(_size.x * tileset.tile_size.x * placeable_tile_size.x, _size.y * tileset.tile_size.y * placeable_tile_size.y, false, Image.FORMAT_RGBA8)
 			var tile_name: StringName
 			if source is TileSetAtlasSource:
 				if placeable_to_rl_name.has(placeable):
@@ -100,7 +104,10 @@ func render_placeables() -> void:
 						var tile_coords: Vector2i = placeable.get_cell_atlas_coords(Vector2i(x, y))
 						var region: Rect2i = source.get_tile_texture_region(tile_coords)
 						var cell_image: Image = source.texture.get_image()
-						image.blit_rect(cell_image.get_region(region), tile_size_rect, Vector2i(x * tileset.tile_size.x, y * tileset.tile_size.y))
+						image.blit_rect(cell_image.get_region(region), 
+								Rect2i(tile_size_rect.position, tile_size_rect.size * placeable_tile_size), 
+								Vector2i(x * tileset.tile_size.x, y * tileset.tile_size.y))
+						print(tile_name, Rect2i(tile_size_rect.position, tile_size_rect.size * placeable_tile_size))
 			elif source is TileSetScenesCollectionSource:
 				# For now, making an assumption that scene placeables will be one tile (that is the scene)
 				# More complicated logic needed if this assumption is violated
