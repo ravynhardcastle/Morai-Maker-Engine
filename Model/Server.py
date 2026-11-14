@@ -218,7 +218,7 @@ def server_process_godot_selection(selection_data, selection_cache, objects_data
 	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
 	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
 
-	we will look through this, and when we reach a 1 (or -1) we will then scan horrizontally untill we reach a 0
+	we will look through this, and when we reach a 1 (or -1) we will then scan horizontally untill we reach a 0
 	and then we will return to the original starting x, go down in y, and then keep scanning,
 	we will do this will we reach no ones 1s. this will mark a "selection"
 	we will then treat that as a tile, so we will provide it a name ("selection_01"), and mark its size.
@@ -278,6 +278,15 @@ def obtain_selection(selected_data, objects_data, visited, initial_x, initial_y)
 			# Get the object(s) that exist at this location
 			# since its possible we could have both a fg and bj object at the same location
 			objects_data_at_location = [obj for obj in objects_data if obj["coords"] == (x, y)]
+			# Store the selection information
+			selection_info["coords"] = (initial_x, initial_y)
+			selection_info["size"] = (x - initial_x + 1, y - initial_y + 1)
+			selection_info["objects"] = objects_data_at_location
+
+		# see if we need to break due to reaching the end of the selection in the y direction
+		current_cell = selected_data[x][initial_y]
+		if current_cell == 0:
+			break
 
 	return selection_info
 
