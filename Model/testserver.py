@@ -201,6 +201,87 @@ def server_process_godot_cache(cache_data):
 		size = size.strip("()").split(",")
 		object_sizes[name] = [int(size[0]), int(size[1])]
 	return object_sizes
+def server_process_godot_selection(selection_data, selection_cache, objects_data):
+	'''
+	This is the primary mask that is used with the "explicit" learning.
+	it will be a List2D<> with the following possible values
+	-1 = negative selection, the user has specified this is NOT something that they want
+	0 = neutral, this is a basic selection
+	1 = positive selection, the user has sp[ecified this is something they want to see more of
+
+	for -1 and 1 selections, the following process will be done
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
+	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 -1 -1 -1 0 0 0 0
+	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
+	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
+	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
+
+	we will look through this, and when we reach a 1 (or -1) we will then scan horrizontally untill we reach a 0
+	and then we will return to the original starting x, go down in y, and then keep scanning,
+	we will do this will we reach no ones 1s. this will mark a "selection"
+	we will then treat that as a tile, so we will provide it a name ("selection_01"), and mark its size.
+	we will check out cache of selections, and if this selection is not in the cache, we will add it to the cache,
+	if its already in the cache, we will increment its "strength by either: 1 or -1 depending on if it was a positive or negative selection.
+
+	For example the above example (assuming the two 2x3 are the same items) would create 3 entries into our cache
+	selection_01, size: (2, 3), strength: 2
+	selection_02, size: (3, 3), strength: 1
+	selection_03, size: (4, 1), strength: -1
+	'''
+	# Create a copy, so we can track locations we have visited
+	visited = [column[:] for column in selection_data]
+	map_width = len(selection_data)
+	map_height = len(selection_data[0])
+	for x in range(map_width):
+		for y in range(map_height):
+			# Check to see if we have already visited this location
+			current_cell = selection_data[x][y]
+			if visited[x][y] == 'V':
+				continue
+			# Now we check to see if its a selection
+			if current_cell == 0:
+				# Mark as visited and continue
+				visited[x][y] = 'V'
+				continue
+
+			# If we reach this point, we have hit either 1 or -1. we need to process the selection
+			info =obtain_selection(selected_data=selection_data, objects_data=objects_data, visited=visited, initial_x=x, initial_y=y)
+
+
+
+			# At the end of logic, we will mark this location to be "V" visited
+			visited[x][y] = 'V'
+
+def obtain_selection(selected_data, objects_data, visited, initial_x, initial_y):
+	'''
+	This function is the inner loop that looks for, and obtains a selection from the selected_data
+
+	THERE IS A POTENTIAL ISSUE IF TWO SELECTIONS ARE TOUCHING
+	'''
+
+
+	# Loop through the selection_data, starting from the initial_x and initial_y, and find the bounds of the selection
+	selection_info = {}
+	for x in range(initial_x, len(selected_data)):
+		for y in range(initial_y, len(selected_data[0])):
+			# obtain the current cell value
+			current_cell = selected_data[x][y]
+			# if we hit a zero, we have reached the end of this selection
+			if current_cell == 0:
+				break
+			else:
+				# Mark as visited
+				visited[x][y] = 'V'
+
+			# Get the object(s) that exist at this location
+			# since its possible we could have both a fg and bj object at the same location
+			objects_data_at_location = [obj for obj in objects_data if obj["coords"] == (x, y)]
+
+	return selection_info
+
+
 def server_check_tile_placement(tile, pos, occupied_grid, object_sizes):
 	# pretty much the copy from the Godot implementation + adding a bounds check
 	# Get the size of the tile we are trying to check
