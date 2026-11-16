@@ -94,7 +94,7 @@ func _on_receive_suggestion(suggestion: Array) -> void:
 	
 
 		
-func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], camera_position: int) -> void: # info in tile_map.gd
+func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], mask: Array[Array], camera_position: int) -> void: # info in tile_map.gd
 	print("Sending game state to python server for calculation")
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings
 	var objects: Array
@@ -111,10 +111,10 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 	# Yeah I know there is a better way to do this, but this is what im doing LOL
 	var data: Dictionary = {}
 	if (not bHasSentCache):
-		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position, "cache": object_sizes}
+		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "mask": mask, "camera": camera_position, "cache": object_sizes}
 		bHasSentCache = true
 	else:
-		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "camera": camera_position}
+		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "mask": mask, "camera": camera_position}
 	# —————————————————————————————————————————————————————————————————————
 	var json: String = JSON.stringify(data)
 	var bytes: PackedByteArray = json.to_utf8_buffer()
