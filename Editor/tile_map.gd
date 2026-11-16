@@ -34,7 +34,10 @@ var saved_objects_list: Array[Dictionary] = objects_list.duplicate()
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
 var select_pos: Vector2i: # the grid position you have selected
 	set(value):
-		select_pos = clamp(value, Vector2i.ZERO, fg_layer.get_used_rect().size - Vector2i.ONE * 3)
+		select_pos = Vector2i(
+				clamp(value.x, 0, fg_layer.get_used_rect().size.x - 3), # To include the side padding
+				clamp(value.y, 0, fg_layer.get_used_rect().size.y - 20) # To include the top padding
+		)
 		# You may be asking: Why don't we just use the occupied grid directly always?
 		# Well, we probably could do something efficient that doesn't check for collisions at all,
 		# but we need to differentiate between FG and BG anyways, so I use this approach
@@ -191,7 +194,6 @@ func _input(event: InputEvent) -> void:
 						for y: int in floor(new_selection.selection.size.y / tile_size):
 							mask[x + pos.x][y + pos.y] = value
 					selecting_box.queue_redraw()
-				print(mask)
 			if not event.is_pressed():
 				return
 			if not selecting:
