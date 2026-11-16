@@ -6,7 +6,9 @@
 [ext_resource type="Texture2D" uid="uid://36wt8il63qaa" path="res://Assets/Sprites/UI/panel_beige.png" id="2_vl7gr"]
 [ext_resource type="Theme" uid="uid://cf3rdyv6kp6vg" path="res://Assets/Themes/end_turn_button.tres" id="3_55rxr"]
 [ext_resource type="PackedScene" uid="uid://fkib2ond4ukd" path="res://Editor/tile_map.tscn" id="3_o8ses"]
+[ext_resource type="Theme" uid="uid://djy46vggb7n02" path="res://Assets/Themes/selection_button.tres" id="4_motgv"]
 [ext_resource type="Script" uid="uid://dc2j0kxm4s4ww" path="res://Editor/minimap.gd" id="4_rw8kj"]
+[ext_resource type="Texture2D" uid="uid://ceq85oa7hryxs" path="res://Assets/Sprites/UI/selection.png" id="5_i43t3"]
 [ext_resource type="Script" uid="uid://hwci4ip8x4rx" path="res://Editor/objects.gd" id="6_8ctag"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ux1dr"]
@@ -130,50 +132,64 @@ theme_override_styles/panel = ExtResource("1_o8ses")
 [node name="BottomDisplay" type="HBoxContainer" parent="UserInterface/BottomContainer" unique_id=1162005792]
 layout_mode = 2
 
-[node name="MinimapContainer" type="SubViewportContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=1562624181]
+[node name="SelectionMinimap" type="VBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=2007681527]
+layout_mode = 2
+
+[node name="Selection" type="Button" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap" unique_id=594521793]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 3
+theme = ExtResource("4_motgv")
+toggle_mode = true
+text = "Preference Selection"
+icon = ExtResource("5_i43t3")
+expand_icon = true
+
+[node name="MinimapContainer" type="SubViewportContainer" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap" unique_id=1562624181]
 texture_filter = 6
-custom_minimum_size = Vector2(456, 228)
-custom_maximum_size = Vector2(456, 228)
+custom_minimum_size = Vector2(456, 177)
+custom_maximum_size = Vector2(456, 177)
+clip_contents = true
 layout_mode = 2
 size_flags_vertical = 4
 
-[node name="MinimapViewport" type="SubViewport" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer" unique_id=1775675694]
+[node name="MinimapViewport" type="SubViewport" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/MinimapContainer" unique_id=1775675694]
 handle_input_locally = false
 size = Vector2i(456, 228)
 render_target_update_mode = 4
 
-[node name="Minimap" type="Node2D" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport" unique_id=1977828250 node_paths=PackedStringArray("tilemap", "viewport", "camera")]
+[node name="Minimap" type="Node2D" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/MinimapContainer/MinimapViewport" unique_id=1977828250 node_paths=PackedStringArray("tilemap", "viewport", "camera")]
 script = ExtResource("4_rw8kj")
-tilemap = NodePath("../../../../../Game/Tiles/TileViewport/TileMap")
+tilemap = NodePath("../../../../../../Game/Tiles/TileViewport/TileMap")
 viewport = NodePath("SubViewportContainer/MinimapRender")
 camera = NodePath("SubViewportContainer/MinimapRender/Camera")
 
-[node name="Background" type="ColorRect" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap" unique_id=1531157692]
+[node name="Background" type="ColorRect" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/MinimapContainer/MinimapViewport/Minimap" unique_id=1531157692]
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_right = 456.0
-offset_bottom = 228.0
+offset_bottom = 177.0
 grow_horizontal = 2
 grow_vertical = 2
 color = Color(0, 0, 0, 1)
 
-[node name="SubViewportContainer" type="SubViewportContainer" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap" unique_id=2029496908]
-custom_minimum_size = Vector2(456, 228)
-custom_maximum_size = Vector2(456, 228)
+[node name="SubViewportContainer" type="SubViewportContainer" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/MinimapContainer/MinimapViewport/Minimap" unique_id=2029496908]
+custom_minimum_size = Vector2(456, 177)
+custom_maximum_size = Vector2(456, 177)
 size_flags_horizontal = 3
 size_flags_vertical = 3
 stretch = true
 
-[node name="MinimapRender" type="SubViewport" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer" unique_id=123478906]
+[node name="MinimapRender" type="SubViewport" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer" unique_id=123478906]
 disable_3d = true
 transparent_bg = true
 handle_input_locally = false
 canvas_cull_mask = 4294967285
-size = Vector2i(456, 228)
+size = Vector2i(456, 177)
 render_target_update_mode = 4
 
-[node name="Camera" type="Camera2D" parent="UserInterface/BottomContainer/BottomDisplay/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer/MinimapRender" unique_id=979148093]
+[node name="Camera" type="Camera2D" parent="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/MinimapContainer/MinimapViewport/Minimap/SubViewportContainer/MinimapRender" unique_id=979148093]
 offset = Vector2(0, 400)
 
 [node name="Objects" type="VBoxContainer" parent="UserInterface/BottomContainer/BottomDisplay" unique_id=1623881114]
@@ -277,4 +293,5 @@ TURN"
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/ClearButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_clear_button_pressed"]
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/RemoveButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_remove_button_pressed"]
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/EndButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_button_pressed"]
+[connection signal="toggled" from="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/Selection" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_selection_toggled"]
 [connection signal="pressed" from="UserInterface/BottomContainer/BottomDisplay/EndTurnMenu/EndTurnButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_turn_button_pressed"]

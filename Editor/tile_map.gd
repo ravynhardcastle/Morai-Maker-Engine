@@ -1,10 +1,5 @@
 extends Node2D
 
-# Later, when adding tiles, if deleted_objects.is_empty is false, sort it and then set the index to the lowest deleted value
-# then of course remove that index from the deleted_objects list, and un-empty the entry in objects_list
-# TODO: Addition. When doing addition, compute the size and then check which cells would be changed by the addition.
-# If any are not -1, fail to do the addition
-
 @export var layers: Array[TileMapLayer]
 @export var camera: Camera2D
 @export var grid: Node2D
@@ -16,6 +11,7 @@ extends Node2D
 @export var cursor_collider: Area2D
 @export var error_highlight: AnimationPlayer
 @export var error_cooldown: Timer
+@export var selecting_box: Node2D
 @onready var fg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "ForegroundLayer")]
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
 @onready var grid_size: Vector2 = fg_layer.get_used_rect().size
@@ -25,6 +21,12 @@ var deleted_objects: Array[int] # an array of indexes of objects_list that are c
 var occupied_fg_grid: Array[Array] # Each array contains an int that is just the index of the thing in the objects list
 var occupied_bg_grid: Array[Array]
 var last_object_index: int # The last index for a placed object
+var preference_selecting: bool
+var selecting: bool
+var selection_positive: bool
+var selection_start: Vector2i
+var selection_end: Vector2i
+var selections: Array[Dictionary] # Dictionary is like "selection": Rect2i "positive": bool
 
 var saved_objects_list: Array[Dictionary] = objects_list.duplicate()
 
@@ -123,6 +125,18 @@ func _process(delta: float) -> void:
 	camera_selection_sprite.queue_redraw()
 	camera_selection_sprite.position = ((camera.get_screen_center_position() - camera.get_viewport_rect().size / 2) - Vector2(tile_size * 3, tile_size/2)) / (scale * 2)
 
+	if selecting:
+		var mouse: Vector2 = floor(get_global_mouse_position() / scale / tile_size)
+		if mouse.x * tile_size < selection_start.x:
+			selection_end.x = floor(mouse.x * tile_size - selection_start.x - tile_size)
+		else:
+			selection_end.x = floor((mouse.x + 1) * tile_size - selection_start.x)
+		if mouse.y * tile_size < selection_start.y:
+			selection_end.y = floor(mouse.y * tile_size - selection_start.y - tile_size)
+		else:
+			selection_end.y = floor((mouse.y + 1) * tile_size - selection_start.y)
+		selecting_box.queue_redraw()
+
 func _on_run_button_pressed() -> void:
 	# TODO: run simulator
 	pass
@@ -149,18 +163,34 @@ func _on_end_button_pressed() -> void:
 	# TODO: Save something here
 	get_tree().quit()
 
+func _on_selection_toggled(toggled_on: bool) -> void:
+	preference_selecting = toggled_on
 	
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton or event is InputEventMouseMotion:
-		if event.button_mask == MOUSE_BUTTON_LEFT:
-			if selected_object != -1 or not Game.selected_tile or not Game.selected_tile.tile:
-				if Game.selected_tile != null:
-					highlight_error()
+		if not preference_selecting:
+			if event.button_mask == MOUSE_BUTTON_LEFT:
+				if selected_object != -1 or not Game.selected_tile or not Game.selected_tile.tile:
+					if Game.selected_tile != null:
+						highlight_error()
+					return
+				place_object(Game.selected_tile.tile, select_pos, Game.selected_tile.fg, true)
+				
+			elif event.button_mask == MOUSE_BUTTON_RIGHT:
+				delete_object(selected_object)
+		else:
+			if event is InputEventMouseButton:
+				selecting = false
+				if not event.is_pressed():
+					var new_selection: Dictionary[String, Variant] = {"selection": make_selection_rect(selection_start, selection_end), "positive": selection_positive}
+					selections.append(new_selection)
+					selecting_box.queue_redraw()
+			if not event.is_pressed():
 				return
-			place_object(Game.selected_tile.tile, select_pos, Game.selected_tile.fg, true)
-			
-		elif event.button_mask == MOUSE_BUTTON_RIGHT:
-			delete_object(selected_object)
+			if not selecting:
+				selecting = true
+				selection_positive = event.button_mask == MOUSE_BUTTON_LEFT
+				selection_start = floor((get_global_mouse_position()/scale) / tile_size) * tile_size
 	
 func _sync_cursor() -> void:
 	cursor_collider.position = get_global_mouse_position() / scale
@@ -187,10 +217,22 @@ func _on_end_turn_button_pressed() -> void:
 
 func _on_selection_highlight_draw() -> void:
 	selection_highlight.draw_rect(select_rect, Color.WHITE, true)
-	
+
+func _on_selecting_box_draw() -> void:
+	if selecting:
+		selecting_box.draw_rect(make_selection_rect(selection_start, selection_end), Color.GREEN if selection_positive else Color.RED, false, 3)
+	for current_selection in selections:
+		selecting_box.draw_rect(current_selection.selection, Color.GREEN if current_selection.positive else Color.RED, false, 3)
+		selecting_box.draw_rect(current_selection.selection, Color(Color.GREEN if current_selection.positive else Color.RED, 0.5), true)
+		
 func _on_receive_suggestion(tile: StringName, coords: Vector2i):
 	place_object(tile, coords)
 	Game.last_suggestion.append({"name": tile, "coords": coords, "object_index": last_object_index})
+
+func make_selection_rect(_selection_start: Vector2i, _selection_end: Vector2i) -> Rect2i:
+	var offset: Vector2i = Vector2i(tile_size if _selection_end.x < 0 else 0, tile_size if _selection_end.y < 0 else 0)
+	return Rect2i(_selection_start + offset, _selection_end).abs()
+
 
 func highlight_error():
 	if error_cooldown.time_left == 0:
@@ -386,8 +428,8 @@ func new_object(_name: StringName, coords: Vector2i, layer: StringName) -> Dicti
 	return {&"name": _name, &"coords": coords, &"layer": layer}
 
 func delete_object(object_index: int) -> void:
-	if objects_list[object_index].is_empty(): return # already deleted!
 	if object_index == -1: return # trying to delete an empty tile!
+	if objects_list[object_index].is_empty(): return # already deleted!
 	var layer_name: StringName = objects_list[object_index].layer
 	objects_list[object_index] = {}
 	var occupied_grid: Array[Array]
