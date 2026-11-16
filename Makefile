@@ -20,7 +20,7 @@ RESET  = \033[0m
 # Create the python server
 run: install
 	@echo -e "$(BLUE)Starting server...$(RESET)"
-	@$(VENV_PY) Model/testserver.py
+	@$(VENV_PY) Model/Server.py
 
 
 
