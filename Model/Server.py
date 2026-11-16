@@ -133,6 +133,42 @@ def server_send(data: dict, connection):
 
 # ————— New Implementation ————— #
 #region New Implementation
+
+# Creating a new class to hold a selection.. since I think itll end up being easier to work with later?
+class Selection_Object:
+	'''
+	Class that will be treated like a "siongle tile" in regards to the RL pipeline, and will be use as an "option"
+	'''
+	def __init__(self, size, objects):
+		self.name = ""# This is whatever "name" this selection (tile) will be called
+		self.strength = 0 # this is how much the user likes this selection. high is good, low is bad
+		self.size = tuple(size) # (x,y)
+		self.objects = objects # the list of "objects" or "actions" that when done will create the selection
+
+	def __eq__(self, other):
+		if not isinstance(other, Selection):
+			return False
+		return self.size == other.size and self.objects == other.objects
+
+	def __hash__(self):
+		return hash(self.objects)
+
+	def __repr__(self):
+		return f"Selection({self.name}, size={self.size}, strength={self.strength})"
+
+	def get_object_actions(self, origin_x, origin_y):
+		'''
+		if given a starting point, this will provide all the "objects" or "actions" that will rebuild the selection
+		'''
+		object_actions = []
+		for object in self.objects:
+			# construct an "object" in the same syntax the RL agent will expect
+			placements.append({"coords": [origin_x + object["coords"][0], origin_y + object["coords"][1]],
+							   "layer": object["layer"],
+							   "name": object["name"]})
+		return object_actions
+
+
 def server_process_godot_data(fg_data, bg_data, objects_data, start_x, allNames, map_width:int =40, map_height:int=15):
 	'''
 	This will convert the dict data provided by Godot into Tensors that can be used within the network
@@ -201,7 +237,7 @@ def server_process_godot_cache(cache_data):
 		size = size.strip("()").split(",")
 		object_sizes[name] = [int(size[0]), int(size[1])]
 	return object_sizes
-def server_process_godot_selection(selection_data, selection_cache, objects_data):
+def server_process_godot_selection(selection_data, selection_cache, objects_data, fg_data, bg_data):
 	'''
 	This is the primary mask that is used with the "explicit" learning.
 	it will be a List2D<> with the following possible values
@@ -232,6 +268,9 @@ def server_process_godot_selection(selection_data, selection_cache, objects_data
 	'''
 	# Create a copy, so we can track locations we have visited
 	visited = [column[:] for column in selection_data]
+	# if we ever just don't send selection data, we will return the old selection_cache
+	if len(selection_data) == 0:
+		return selection_cache
 	map_width = len(selection_data)
 	map_height = len(selection_data[0])
 	for x in range(map_width):
@@ -247,48 +286,66 @@ def server_process_godot_selection(selection_data, selection_cache, objects_data
 				continue
 
 			# If we reach this point, we have hit either 1 or -1. we need to process the selection
-			info =obtain_selection(selected_data=selection_data, objects_data=objects_data, visited=visited, initial_x=x, initial_y=y)
+			selection, sign = obtain_selection(selected_data=selection_data, objects_data=objects_data, fg_data=fg_data, bg_data=bg_data, visited=visited, initial_x=x, initial_y=y)
 
 
 
-			# At the end of logic, we will mark this location to be "V" visited
+			# Update the strength of the selection
+			selection.strength += sign
+			print(f"[Server] {selection} changed by {sign} to {selection.strength}")
+			# FOR NOW, WE JUST ADD IT TO THE CACHE
+			selection_cache.append(selection)
+
+			# Mark this cell as visited
 			visited[x][y] = 'V'
 
-def obtain_selection(selected_data, objects_data, visited, initial_x, initial_y):
+	return selection_cache
+def obtain_selection(selected_data, objects_data, fg_data, bg_data, visited, initial_x, initial_y):
 	'''
-	This function is the inner loop that looks for, and obtains a selection from the selected_data
-
 	THERE IS A POTENTIAL ISSUE IF TWO SELECTIONS ARE TOUCHING
+	THIS WILL NEED TO BE UPDATED, SINCE RIGHT NOW I AM MAKING ALOT OF ASSUMPTIONS!!!
 	'''
-
+	# Since we know this is called from the start of a selection, we can just grab if its a 1 or -1
+	sign = selected_data[initial_x][initial_y]
+	map_width = len(selected_data)
+	map_height = len(selected_data[0])
 
 	# Loop through the selection_data, starting from the initial_x and initial_y, and find the bounds of the selection
-	selection_info = {}
-	for x in range(initial_x, len(selected_data)):
-		for y in range(initial_y, len(selected_data[0])):
-			# obtain the current cell value
-			current_cell = selected_data[x][y]
-			# if we hit a zero, we have reached the end of this selection
-			if current_cell == 0:
-				break
-			else:
-				# Mark as visited
-				visited[x][y] = 'V'
+	#TODO: Recall, this has a issue if two selections are right beside each other!!!
+	width = 0
+	while initial_x + width < map_width and visited[initial_x + width][initial_y] == sign:
+		width += 1
 
-			# Get the object(s) that exist at this location
-			# since its possible we could have both a fg and bj object at the same location
-			objects_data_at_location = [obj for obj in objects_data if obj["coords"] == (x, y)]
-			# Store the selection information
-			selection_info["coords"] = (initial_x, initial_y)
-			selection_info["size"] = (x - initial_x + 1, y - initial_y + 1)
-			selection_info["objects"] = objects_data_at_location
+	# Do the same for the height
+	height = 1
+	while initial_y + height < map_height and all(visited[initial_x + dx][initial_y + height] == sign for dx in range(width)):
+		height += 1
 
-		# see if we need to break due to reaching the end of the selection in the y direction
-		current_cell = selected_data[x][initial_y]
-		if current_cell == 0:
-			break
+	# Now that we know the bounds, go through every cell of the selection
+	# we treat 0,0 as the top left corner of this selection
+	object_indexes = set()
+	empty_coords = set()
+	for dx in range(width):
+		for dy in range(height):
+			# Mark as visited
+			visited[initial_x + dx][initial_y + dy] = 'V'
+			# loop through both the fg and bg
+			for grid in (fg_data, bg_data):
+				val = grid[initial_x + dx][initial_y + dy]
+				if val != -1:
+					object_indexes.add(val)
+				# later we will handle air blocks
 
-	return selection_info
+	objects = []
+	for index in object_indexes:
+		#TODO: Th
+		if index >= 0 and index < len(objects_data) and objects_data[index].get("name"):
+			obj = objects_data[index]
+			objects.append({"coords": [obj["coords"][0] - initial_x, obj["coords"][1] - initial_y],
+							"layer": obj["layer"],
+							"name": obj["name"]})
+	# create a new object
+	return Selection_Object((width, height), objects), sign
 
 
 def server_check_tile_placement(tile, pos, occupied_grid, object_sizes):
@@ -311,6 +368,7 @@ def server_check_tile_placement(tile, pos, occupied_grid, object_sizes):
 def server_fill_placement(fill_grid, occupied_grid):
 	for cell in fill_grid:
 		occupied_grid[cell[0]][cell[1]] = 0 # just not -1, to show SOMETHING is here
+
 def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_x, actions, map_width:int=40, map_height:int=15):
 
 	mask = np.zeros((map_width, map_height, len(actions)), dtype=bool)
@@ -427,6 +485,11 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				thisStartX = int(data["camera"]) # jk this is actually called "camera"
 				if "cache" in data:
 					object_sizes = server_process_godot_cache(data["cache"])
+				# FOR NOW, WE JUST CREATE IT HERE
+				selection_cache = []
+				if "mask" in data:
+					selection_cache = server_process_godot_selection(data["mask"], selection_cache, objects_data, fg_data, bg_data)
+					print(selection_cache)
 				# ————— Need to convert everything to tensors ————— #
 				currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
 				# ————— Action Masking ————— #
