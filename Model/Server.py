@@ -489,7 +489,9 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				selection_cache = []
 				if "mask" in data:
 					selection_cache = server_process_godot_selection(data["mask"], selection_cache, objects_data, fg_data, bg_data)
+					print("----- Printing Selection Cache -----")
 					print(selection_cache)
+					print("------------------------------------")
 				# ————— Need to convert everything to tensors ————— #
 				currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
 				# ————— Action Masking ————— #
