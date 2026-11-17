@@ -146,7 +146,7 @@ class Selection_Object:
 		self.objects = objects # the list of "objects" or "actions" that when done will create the selection
 
 	def __eq__(self, other):
-		if not isinstance(other, Selection):
+		if not isinstance(other, Selection_Object):
 			return False
 		return self.size == other.size and self.objects == other.objects
 
@@ -163,7 +163,7 @@ class Selection_Object:
 		object_actions = []
 		for object in self.objects:
 			# construct an "object" in the same syntax the RL agent will expect
-			placements.append({"coords": [origin_x + object["coords"][0], origin_y + object["coords"][1]],
+			object_actions.append({"coords": [origin_x + object["coords"][0], origin_y + object["coords"][1]],
 							   "layer": object["layer"],
 							   "name": object["name"]})
 		return object_actions
