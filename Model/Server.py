@@ -289,12 +289,20 @@ def server_process_godot_selection(selection_data, selection_cache, objects_data
 			selection, sign = obtain_selection(selected_data=selection_data, objects_data=objects_data, fg_data=fg_data, bg_data=bg_data, visited=visited, initial_x=x, initial_y=y)
 
 
+			# Check to see if this selection is already present within our cache
+			found_in_cache = False
+			for select in selection_cache:
+				if select == selection:
+					# if its already present, we want to update the "strength"
+					# we may also wanna consider like... if we add a negative selection should that just instantly reset it?
+					# like if a +10 gets a negative so we reset to -1, or a -10 gets a possitive do we reset to 1?
+					select.strength += sign
+					found_in_cache = True
+					break
 
-			# Update the strength of the selection
-			selection.strength += sign
-			print(f"[Server] {selection} changed by {sign} to {selection.strength}")
-			# FOR NOW, WE JUST ADD IT TO THE CACHE
-			selection_cache.append(selection)
+			if not found_in_cache:
+				selection.strength = sign
+				selection_cache.append(selection)
 
 			# Mark this cell as visited
 			visited[x][y] = 'V'
@@ -441,6 +449,12 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	# ————— Caches ————— #
 	object_sizes = {} # Initialize the cache
 	object_layers = {} # Initialize the cache
+
+	'''
+	This is the cache that holds all the selection information for the running application. It is in the following format:
+	List<Selection_Object>. Where a Selection 
+	'''
+	selection_cache = []
 	# ————— END Caches ————— #
 	# WAIT FOR PROMPT
 
@@ -485,10 +499,9 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				thisStartX = int(data["camera"]) # jk this is actually called "camera"
 				if "cache" in data:
 					object_sizes = server_process_godot_cache(data["cache"])
-				# FOR NOW, WE JUST CREATE IT HERE
-				selection_cache = []
 				if "mask" in data:
 					selection_cache = server_process_godot_selection(data["mask"], selection_cache, objects_data, fg_data, bg_data)
+				if len(selection_cache) > 0:
 					print("----- Printing Selection Cache -----")
 					print(selection_cache)
 					print("------------------------------------")
