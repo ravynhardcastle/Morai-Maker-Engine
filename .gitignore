@@ -8,7 +8,7 @@ __pycache__/
 __pycache__.meta
 *.pyc
 *.pyc.meta
-
+Pretraining/
 # Godot 4.2+ specific ignores
 ~*.dll
 
