@@ -22,6 +22,7 @@ from tile_config import allNames, actions
 class ServerConfig:
 	TCP_IP: str = '127.0.0.1' #localhost' (yeah this could stay local host, im just hard coding this for now)
 	TCP_PORT: int = 8039
+
 # ————— END CONFIG ————— #
 
 # ————— Old Implementation ————— #
@@ -392,8 +393,8 @@ def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_
 	return mask
 #endregion
 # ————— END New Implementation ————— #
-
-def server_create_model():
+MODEL_PATH = "Model/testFull.h5"
+def server_build_model():
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
 	network_inputs = layers.Input(shape=(40,15,len(allNames)))
 	#conv = conv_2d(networkInput, 8, 4, activation='leaky_relu')
@@ -414,15 +415,14 @@ def server_create_model():
 		loss='mean_squared_error',
 		metrics=['accuracy']
 	)
-
-	#model = tflearn.DNN(network)
-	#model.load("testFull.tflearn")  # smbANDtestFull
+	return model
+def server_create_model():
+	model = server_build_model()
 	try:
-		model.load_weights("Model/testFull.h5")
+		model.load_weights(MODEL_PATH)
 		print("Model weights loaded")
 	except Exception as e:
 		print("model weights no failed to load: " + str(e))
-	# print ("CONV 1: "+str(conv.W))
 	return model
 def server_create_socket(config: ServerConfig):
 	TCP_IP = config.TCP_IP
