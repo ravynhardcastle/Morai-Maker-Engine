@@ -59,14 +59,17 @@ def load_final_scores():
 	return finalScores
 def load_training_examples_by_player(finalScores):
 	'''
-	Like.. This is also nearly a copy paste from yalini_test.py
-
+	taken from yalini_test.py / test.py
 	'''
 	gamma = 0.1
 	SARSAS = [] # lowkey im still trying to figure out what this word is
 	trainingExamplesByPlayer = {}
+	totalAdditions = 0
+	totalDeletions = 0
 	for file_name in data_path.glob('*/*.txt'):
 		content = []
+		additions = 0
+		deletions = 0
 		with open(file_name) as f:
 			content = f.readlines()
 		content = [x.strip() for x in content]
@@ -102,10 +105,12 @@ def load_training_examples_by_player(finalScores):
 
 					if designMode:
 						if playerControl:
-							if x in blocks.keys() and y in blocks[x].keys() and blocks[x][y][
-								allNames.index(nameOfAddition)] > 0:
+							if x in blocks.keys() and y in blocks[x].keys() and blocks[x][y][allNames.index(nameOfAddition)] > 0:
 								# Player Removed
 								blocks[x][y][allNames.index(nameOfAddition)] = 0
+								if x in aiActions.keys() and y in aiActions[x].keys() and aiActions[x][y][
+									allNames.index(nameOfAddition)] > 0:
+									totalDeletions += 1
 							else:
 								# Player Added
 								if not x in blocks.keys():
@@ -125,20 +130,21 @@ def load_training_examples_by_player(finalScores):
 									blocks[x] = {}
 								if not y in blocks[x].keys():
 									blocks[x][y] = [0] * len(allNames)
+								totalAdditions += 1
 								blocks[x][y][allNames.index(nameOfAddition)] = 1
 
 
 
 				elif "Ended Turn" in line:
-					s1 = copy.deepcopy(currentPrevState)
-					a1 = copy.deepcopy(aiActions)
-					s2 = copy.deepcopy(blocks)
+					s1 = dict(currentPrevState)
+					a1 = dict(aiActions)
+					s2 = dict(blocks)
 					thisSequence.append([s1, a1, s2])
 
 					# totalInteractions+=1
 					playerControl = False
 					# freeze current prev state
-					currentPrevState = copy.deepcopy(blocks)
+					currentPrevState = dict(blocks)
 					aiActions = {}  # erase prior AI actions
 				elif "Player Turn" in line:
 					playerControl = True
@@ -157,9 +163,9 @@ def load_training_examples_by_player(finalScores):
 
 		if not blocks.keys() == 0 and len(thisSequence) > 0:
 			# Determine training values
-			splits = str(file_name).split("/")
-			splits2 = splits[-1].split(".")
-			playerID = splits2[0]
+			#splits = str(file_name).split("/")
+			#splits2 = splits[-1].split(".")
+			playerID = file_name.stem
 			thisScore = 0
 			if playerID in finalScores.keys():
 				thisScore = finalScores[playerID]
@@ -197,8 +203,7 @@ def load_training_examples_by_player(finalScores):
 								if j == 0:
 									reward = thisScore
 								# Did player delete what the AI Added
-								if currSequence[1][x][y][z] > 0 and not currSequence[1][x][y][z] == \
-								                                        currSequence[2][x][y][z]:
+								if not currSequence[1][x][y][z] == currSequence[2][x][y][z]:
 									reward -= 0.1
 
 								value = reward
@@ -209,15 +214,13 @@ def load_training_examples_by_player(finalScores):
 
 						if noAction:
 							# Handle emptiness
+							# We added nothing, was that right?
 							reward = 0
 							if j == 0:
 								reward = thisScore
 							# Did player change anything
-							for z in range(0, len(actions) - 1):
-								if currSequence[1][x][y][z] > 0 == currSequence[2][x][y][z] == 0:
-									reward -= 0.1
-								elif currSequence[1][x][y][z] <= 0 == currSequence[2][x][y][z] > 0:
-									reward += 0.1
+							if not currSequence[1][x][y] == currSequence[2][x][y]:
+								reward -= 0.1
 							value = reward
 							if not j == 0:
 								value += (gamma ** j) * max(trainingSequence[-1][1][x][y])
@@ -233,7 +236,7 @@ def load_training_examples_by_player(finalScores):
 	return trainingExamplesByPlayer
 def create_training_test_split(trainingExamplesByPlayer):
 	'''
-	copy paste from yalini_test.py
+	taken from yalini_test.py / test.py
 	'''
 	finalTrainingSet = []
 	finalTestingSet = []
@@ -247,59 +250,67 @@ def create_training_test_split(trainingExamplesByPlayer):
 				finalTestingSet += xy
 	return finalTrainingSet, finalTestingSet
 def construct_training_windows(finalTrainingSet):
+	'''
+	Taken from yalini_test.py / test.py
+	'''
 	trainX = []
 	trainY = []
 	full_map_width = 100
 	full_map_height = 15
-	minPointX = 1000 # Higher, so we can easily beat it
-	maxPointX = 0  # Lower, so we can easily beat it
-	for x in range(0, full_map_width):
-		for y in range(0, full_map_height):
-			maxValue = max(largeY[x][y])
-			minValue = min(largeY[x][y])
-			maxValueIndex = largeY[x][y].index(maxValue)
-			minValueIndex = largeY[x][y].index(minValue)
-			if (maxValue>0 and maxValueIndex<len(actions)-1) or (minValue<0 and minValueIndex<len(actions)-1):
-				if x<minPointX:
-					minPointX = x
-				if x>maxPointX:
-					maxPointX = x
-	if "Ended Turn" in line:
+	window_width = 40
+	for xy in finalTrainingSet:
+		largeX = xy[0]
+		largeY = xy[1]
+
+		minPointX = 1000 # Higher, so we can easily beat it
+		maxPointX = 0  # Lower, so we can easily beat it
+		for x in range(0, full_map_width):
+			for y in range(0, full_map_height):
+				maxValue = max(largeY[x][y])
+				minValue = min(largeY[x][y])
+				maxValueIndex = largeY[x][y].index(maxValue)
+				minValueIndex = largeY[x][y].index(minValue)
+				if (maxValue>0 and maxValueIndex<len(actions)-1) or (minValue<0 and minValueIndex<len(actions)-1):
+					if x<minPointX:
+						minPointX = x
+					if x>maxPointX:
+						maxPointX = x
+
 		if minPointX == 1000:
 			# Pick a random position
 			finalx = []
 			finaly = []
-			randXStart = random.randint(0, 60)
-			for x in range(randXStart, randXStart + 40):
+			randXStart = random.randint(0, full_map_width - window_width)
+			for x in range(randXStart, randXStart + window_width):
 				column = []
 				columny = []
-				for y in range(0, 15):
+				for y in range(0, full_map_height):
 					column.append(list(largeX[x][y]))
 					columny.append(list(largeY[x][y]))
 				finalx.append(column)
 				finaly.append(columny)
 			trainX.append(finalx)
-			trainY.append([1, 0])
+			trainY.append(finaly)
 		else:
-			if (maxPointX - minPointX) > 40:
-				for i in range(0, (maxPointX - minPointX) - 40):
+			if (maxPointX - minPointX) > window_width:
+				for i in range(0, (maxPointX - minPointX) - window_width):
 					finalx = []
 					finaly = []
-					for x in range(i, i + 40):
+					for x in range(i, i + window_width):
 						column = []
 						columny = []
-						for y in range(0, 15):
+						for y in range(0, full_map_height):
 							column.append(list(largeX[x][y]))
 							columny.append(list(largeY[x][y]))
 						finalx.append(column)
 						finaly.append(columny)
 					trainX.append(finalx)
-					trainY.append([1, 0])
+					trainY.append(finaly)
 			else:
 				# Center on this point
 				midPoint = int(minPointX + (maxPointX - minPointX) / 2)
-				if midPoint + 20 >= 100:
-					midPoint -= (midPoint + 20) - 100
+				if midPoint + 20 >= full_map_width:
+					midPoint -= (midPoint + 20) - full_map_width
 				if midPoint - 20 < 0:
 					midPoint += -1 * midPoint - 20
 				finalx = []
@@ -307,63 +318,19 @@ def construct_training_windows(finalTrainingSet):
 				for x in range(midPoint - 20, midPoint + 20):
 					column = []
 					columny = []
-					for y in range(0, 15):
+					for y in range(0, full_map_height):
 						column.append(list(largeX[x][y]))
 						columny.append(list(largeY[x][y]))
 					finalx.append(column)
 					finaly.append(columny)
 				trainX.append(finalx)
-				trainY.append([1, 0])
-	else:
-		if minPointX == 1000:
-			# Pick a random position
-			finalx = []
-			finaly = []
-			randXStart = random.randint(0, 60)
-			for x in range(randXStart, randXStart + 40):
-				column = []
-				columny = []
-				for y in range(0, 15):
-					column.append(list(largeX[x][y]))
-					columny.append(list(largeY[x][y]))
-				finalx.append(column)
-				finaly.append(columny)
-			trainX.append(finalx)
-			trainY.append([0, 1])
-		else:
-			if (maxPointX - minPointX) > 40:
-				for i in range(0, (maxPointX - minPointX) - 40):
-					finalx = []
-					finaly = []
-					for x in range(i, i + 40):
-						column = []
-						columny = []
-						for y in range(0, 15):
-							column.append(list(largeX[x][y]))
-							columny.append(list(largeY[x][y]))
-						finalx.append(column)
-						finaly.append(columny)
-					trainX.append(finalx)
-					trainY.append([0, 1])
-			else:
-				# Center on this point
-				midPoint = int(minPointX + (maxPointX - minPointX) / 2)
-				if midPoint + 20 >= 100:
-					midPoint -= (midPoint + 20) - 100
-				if midPoint - 20 < 0:
-					midPoint += -1 * midPoint - 20
-				finalx = []
-				finaly = []
-				for x in range(midPoint - 20, midPoint + 20):
-					column = []
-					columny = []
-					for y in range(0, 15):
-						column.append(list(largeX[x][y]))
-						columny.append(list(largeY[x][y]))
-					finalx.append(column)
-					finaly.append(columny)
-				trainX.append(finalx)
-				trainY.append([0, 1])
+				trainY.append(finaly)
+
+	trainX = np.array(trainX, dtype=np.float32)
+	trainY = np.array(trainY, dtype=np.float32)
+	trainX = np.reshape(trainX, (-1, window_width, full_map_height, len(allNames)))
+	trainY = np.reshape(trainY, (-1, window_width, full_map_height, len(actions)))
+	return trainX, trainY
 #endregion
 # ————— END DATA LOADING ————— #
 
@@ -372,7 +339,12 @@ def construct_training_windows(finalTrainingSet):
 
 
 # ————— PUBLIC API ————— #
-def pre_training():
+def pre_training(force_train: bool = False):
+
+	if MODEL_PATH.exists() and not force_train:
+		print("[Pretraining] We already have a model, we are not re-training")
+		return
+
 	finalScores = load_final_scores()
 	trainingExamplesByPlayer = load_training_examples_by_player(finalScores)
 	finalTrainingSet, finalTestingSet = create_training_test_split(trainingExamplesByPlayer)
@@ -396,7 +368,6 @@ def pre_training():
 
 
 def main():
-	# For now, im just gonna call the main pretraining function if this is ever called solo
 	pre_training()
 
 

@@ -8,6 +8,7 @@ import json
 import socket, csv, time, struct
 from dataclasses import dataclass
 import numpy as np
+from pathlib import Path
 import tensorflow as tf
 # Old version, we are updating to a new version
 #from tflearn import conv_2d, max_pool_2d, local_response_normalization, batch_normalization, fully_connected, regression, input_data, dropout, custom_layer, flatten, reshape, embedding,conv_2d_transpose
@@ -393,7 +394,7 @@ def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_
 	return mask
 #endregion
 # ————— END New Implementation ————— #
-MODEL_PATH = "Model/testFull.h5"
+MODEL_PATH = Path("Server.weights.h5")
 def server_build_model():
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
 	network_inputs = layers.Input(shape=(40,15,len(allNames)))
@@ -411,7 +412,7 @@ def server_build_model():
 	#network = tflearn.regression(mapShape, optimizer='adam', metric='accuracy', loss='mean_square', learning_rate=0.004)
 	model = models.Model(inputs=network_inputs, outputs=network_output)
 	model.compile(
-		optimizer=optimizers.Adam(learning_rate=0.004),
+		optimizer=optimizers.Adam(learning_rate=0.001),
 		loss='mean_squared_error',
 		metrics=['accuracy']
 	)
@@ -419,7 +420,16 @@ def server_build_model():
 def server_create_model():
 	model = server_build_model()
 	try:
-		model.load_weights(MODEL_PATH)
+		# try to load the model if we have one
+		if MODEL_PATH.exists() :
+			print("[Server] We have a pretrained model, loading it.")
+			model.load_weights(str(MODEL_PATH))
+		else:
+			print("[Server] No pretrained model found, training a new one.")
+			from Pretraining import pre_training
+			pre_training(True) # bool for if we want to force a retrain
+			model.load_weights(str(MODEL_PATH))
+
 		print("Model weights loaded")
 	except Exception as e:
 		print("model weights no failed to load: " + str(e))
@@ -458,7 +468,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	# ————— END Caches ————— #
 	# WAIT FOR PROMPT
 
-	minimumInteractionConfidence = 0.01
+	minimumInteractionConfidence = 0.01 # trying something lower than 0.01
 	confidenceDelta = 0.001
 	map_length = 40  # Left to right
 	map_height = 15  # Top to bottom
@@ -588,7 +598,8 @@ def server_connection_handler(config: ServerConfig, socket, model):
 					thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
 					sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
 					#rejections.append([actions[maxToSend[2]], maxToSend[0] + thisStartX, maxToSend[1]]) # Do we need to do this? im unsure
-					conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*")
+					#conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*") # since we are appending,
+					# at the above line, we dont need to send this individually
 					print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
 
 				# SLight change in format, all suggestions are gonna be sent at the very end!
