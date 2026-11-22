@@ -6,6 +6,7 @@ var server: StreamPeerTCP
 var pending: Array
 var last_status: int = StreamPeerTCP.STATUS_NONE
 var bHasSentCache:bool = false
+var tile_size: int
 
 var object_sizes: Dictionary[StringName, Vector2i] # Object size by RL name
 var rl_name_to_placeable: Dictionary[StringName, TileMapPattern]
@@ -94,7 +95,7 @@ func _on_receive_suggestion(suggestion: Array) -> void:
 	
 
 		
-func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], mask: Array[Array], camera_position: int) -> void: # info in tile_map.gd
+func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], selections_list: Array[Dictionary], camera_position: int) -> void: # info in tile_map.gd
 	print("Sending game state to python server for calculation")
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings
 	var objects: Array
@@ -105,16 +106,27 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 			var coords: Vector2i = object[&"coords"]
 			clone[&"coords"] = [coords.x, coords.y]
 		objects.append(clone)
+	
+	var selections: Array[Dictionary] # "size": [x, y] Array; "position": [x, y] Array; "positive": Bool
+	for selection in selections_list:
+		var new: Dictionary
+		var rect: Rect2i = selection[&"selection"]
+		new["size"] = [floori(rect.size.x as float / tile_size), floori(rect.size.y as float/tile_size)]
+		new["position"] = [floori(rect.position.x as float/tile_size), floori(rect.position.y as float/tile_size)]
+		new["positive"] = selection[&"positive"] # true or false
+		selections.append(new)
+		
+	print(selections)
 
 	# —————————————————————————————————————————————————————————————————————
 	# ————— Ensure that we only send the cache information once ————— #
 	# Yeah I know there is a better way to do this, but this is what im doing LOL
 	var data: Dictionary = {}
 	if (not bHasSentCache):
-		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "mask": mask, "camera": camera_position, "cache": object_sizes}
+		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "selections": selections, "camera": camera_position, "cache": object_sizes}
 		bHasSentCache = true
 	else:
-		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "mask": mask, "camera": camera_position}
+		data = {"objects": objects, "fg": occupied_fg_grid, "bg": occupied_bg_grid, "selections": selections, "camera": camera_position}
 	# —————————————————————————————————————————————————————————————————————
 	var json: String = JSON.stringify(data)
 	var bytes: PackedByteArray = json.to_utf8_buffer()

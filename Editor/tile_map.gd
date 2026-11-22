@@ -27,7 +27,6 @@ var selection_positive: bool
 var selection_start: Vector2i
 var selection_end: Vector2i
 var selections: Array[Dictionary] # Dictionary is like "selection": Rect2i "positive": bool
-var mask: Array[Array] # 2D array with -1 = negative mask, 0 = mask, and 1 = positive mask
 
 var saved_objects_list: Array[Dictionary] = objects_list.duplicate()
 
@@ -100,6 +99,7 @@ var selected_object: int = -1 # index of object from the objects list we have se
 var select_rect: Rect2i # the shape that the object is
 
 func _ready() -> void:
+	Game.tile_size = tile_size
 	shadow_viewport.world_2d = get_viewport().world_2d
 	shadow_rect.material.set_shader_parameter("caster_texture", shadow_viewport.get_texture())
 	RenderingServer.frame_pre_draw.connect(_sync_shadow_transform)
@@ -186,13 +186,8 @@ func _input(event: InputEvent) -> void:
 			if event is InputEventMouseButton:
 				selecting = false
 				if not event.is_pressed():
-					var new_selection: Dictionary[String, Variant] = {"selection": make_selection_rect(selection_start, selection_end), "positive": selection_positive}
+					var new_selection: Dictionary[String, Variant] = {&"selection": make_selection_rect(selection_start, selection_end), &"positive": selection_positive}
 					selections.append(new_selection)
-					var pos: Vector2i = floor(new_selection.selection.position / tile_size)
-					var value: int = 1 if selection_positive else -1
-					for x: int in floor(new_selection.selection.size.x / tile_size):
-						for y: int in floor(new_selection.selection.size.y / tile_size):
-							mask[x + pos.x][y + pos.y] = value
 					selecting_box.queue_redraw()
 			if not event.is_pressed():
 				return
@@ -222,7 +217,7 @@ func _on_camera_selection_sprite_draw() -> void:
 	camera_selection_sprite.draw_rect(Rect2(camera_selection_sprite.position, camera_selection_sprite.texture.get_size()), Color.WHITE, false, tile_size)
 
 func _on_end_turn_button_pressed() -> void:
-	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid, mask, round(camera.position.x / tile_size))
+	Game.send_state(objects_list, occupied_fg_grid, occupied_bg_grid, selections, round(camera.position.x / tile_size))
 
 func _on_selection_highlight_draw() -> void:
 	selection_highlight.draw_rect(select_rect, Color.WHITE, true)
@@ -304,15 +299,10 @@ func generate_map() -> void:
 	
 	occupied_fg_grid.resize(grid_size.x as int - 2) # Ignore boundaries
 	occupied_bg_grid.resize(grid_size.x as int - 2)
-	mask.resize(grid_size.x as int - 2)
 	for x in occupied_fg_grid:
 		x.resize(grid_size.y as int - 2)
 	for x in occupied_bg_grid:
 		x.resize(grid_size.y as int - 2)
-	for x in mask.size():
-		mask[x].resize(grid_size.y as int - 2)
-		for y in mask[x].size():
-			mask[x][y] = 0
 		
 	var add_to_grid: Callable = func(_grid: Array[Array], coords: Vector2i, index: int) -> void:
 		_grid[coords.x][coords.y] = index
