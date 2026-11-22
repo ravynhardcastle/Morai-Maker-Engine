@@ -353,8 +353,8 @@ def pre_training(force_train: bool = False):
 	model = server_build_model()
 	model.fit(x=trainX,
 			  y=trainY,
-			  epochs=75,
-			  batch_size=16,
+			  epochs=20,
+			  batch_size=128,
 			  shuffle=True,
 			  verbose=0,
 			  callbacks=[TqdmCallback(verbose=1)])
