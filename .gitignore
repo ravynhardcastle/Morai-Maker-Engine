@@ -24,3 +24,5 @@ export_credentials.cfg
 
 # Imported translations (automatically generated from CSV files)
 *.translation
+
+Levels/*.csv
