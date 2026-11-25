@@ -10,12 +10,36 @@
 [ext_resource type="Script" uid="uid://dc2j0kxm4s4ww" path="res://Editor/minimap.gd" id="4_rw8kj"]
 [ext_resource type="Texture2D" uid="uid://ceq85oa7hryxs" path="res://Assets/Sprites/UI/selection.png" id="5_i43t3"]
 [ext_resource type="Script" uid="uid://hwci4ip8x4rx" path="res://Editor/objects.gd" id="6_8ctag"]
+[ext_resource type="Texture2D" uid="uid://busa850kmm5ep" path="res://Assets/Sprites/UI/options_menu.png" id="11_xkd0q"]
+[ext_resource type="FontFile" uid="uid://c7j5gn0kb6tjr" path="res://Assets/Fonts/KenneyFonts/kenvector_future_thin.ttf" id="12_adket"]
+[ext_resource type="StyleBox" uid="uid://c24ws5cfu3a6y" path="res://Assets/Themes/save_button.tres" id="13_a83es"]
+[ext_resource type="Texture2D" uid="uid://bw5vm0omollix" path="res://Assets/Sprites/UI/buttonLong_grey_pressed.png" id="14_p646r"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ux1dr"]
 bg_color = Color(0, 0, 0, 1)
 
 [sub_resource type="StyleBoxTexture" id="StyleBoxTexture_ux1dr"]
 texture = ExtResource("2_vl7gr")
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_g6ffj"]
+texture = ExtResource("11_xkd0q")
+texture_margin_left = 28.0
+texture_margin_top = 28.0
+texture_margin_right = 28.0
+texture_margin_bottom = 28.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
+
+[sub_resource type="StyleBoxTexture" id="StyleBoxTexture_xht12"]
+texture = ExtResource("14_p646r")
+texture_margin_left = 12.0
+texture_margin_top = 12.0
+texture_margin_right = 12.0
+texture_margin_bottom = 14.0
+expand_margin_left = 10.0
+expand_margin_right = 10.0
+axis_stretch_horizontal = 1
+axis_stretch_vertical = 1
 
 [node name="Editor" type="Control" unique_id=1657180169]
 layout_mode = 3
@@ -122,7 +146,10 @@ canvas_cull_mask = 4294967283
 size = Vector2i(1920, 719)
 render_target_update_mode = 4
 
-[node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 instance=ExtResource("3_o8ses")]
+[node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 node_paths=PackedStringArray("name_popup", "file_name") instance=ExtResource("3_o8ses")]
+position = Vector2(25, -2)
+name_popup = NodePath("../../../../../EndPrompt")
+file_name = NodePath("../../../../../EndPrompt/PromptMargins/Prompt/FileName")
 
 [node name="BottomContainer" type="PanelContainer" parent="UserInterface" unique_id=2132795045]
 layout_mode = 2
@@ -287,7 +314,45 @@ theme = ExtResource("3_55rxr")
 text = "END
 TURN"
 
-[connection signal="pressed" from="UserInterface/BottomContainer/BottomDisplay/EndTurnMenu/EndTurnButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_turn_button_pressed"]
+[node name="EndPrompt" type="PopupPanel" parent="." unique_id=1662779318]
+canvas_item_default_texture_filter = 0
+oversampling_override = 1.0
+title = "Level Title"
+initial_position = 1
+size = Vector2i(940, 300)
+always_on_top = true
+theme_override_styles/panel = SubResource("StyleBoxTexture_g6ffj")
+
+[node name="PromptMargins" type="MarginContainer" parent="EndPrompt" unique_id=1760942678]
+offset_left = 28.0
+offset_top = 28.0
+offset_right = 912.0
+offset_bottom = 272.0
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 20
+
+[node name="Prompt" type="VBoxContainer" parent="EndPrompt/PromptMargins" unique_id=1075062369]
+layout_mode = 2
+
+[node name="FileName" type="LineEdit" parent="EndPrompt/PromptMargins/Prompt" unique_id=620027474]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+placeholder_text = "file_name"
+
+[node name="SaveButton" type="Button" parent="EndPrompt/PromptMargins/Prompt" unique_id=1076963155]
+texture_filter = 1
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 10
+theme_override_colors/font_color = Color(0.096205, 0.096204646, 0.09620472, 1)
+theme_override_fonts/font = ExtResource("12_adket")
+theme_override_font_sizes/font_size = 48
+theme_override_styles/normal = ExtResource("13_a83es")
+theme_override_styles/pressed = SubResource("StyleBoxTexture_xht12")
+theme_override_styles/hover = ExtResource("13_a83es")
+text = "Save"
 
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/RunButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_run_button_pressed"]
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/SaveButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_save_button_pressed"]
@@ -297,3 +362,4 @@ TURN"
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/EndButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_button_pressed"]
 [connection signal="toggled" from="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/Selection" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_selection_toggled"]
 [connection signal="pressed" from="UserInterface/BottomContainer/BottomDisplay/EndTurnMenu/EndTurnButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_turn_button_pressed"]
+[connection signal="pressed" from="EndPrompt/PromptMargins/Prompt/SaveButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_file_save_button_pressed"]

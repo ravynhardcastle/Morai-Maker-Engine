@@ -12,9 +12,11 @@ extends Node2D
 @export var error_highlight: AnimationPlayer
 @export var error_cooldown: Timer
 @export var selecting_box: Node2D
+@export var name_popup: PopupPanel
+@export var file_name: LineEdit
 @onready var fg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "ForegroundLayer")]
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
-@onready var grid_size: Vector2 = fg_layer.get_used_rect().size
+@onready var grid_size: Vector2 = fg_layer.get_used_rect().size - Vector2i(2, 19) # Remove padding, there's some top padding
 @onready var tile_size: int = fg_layer.tile_set.tile_size.x
 var objects_list: Array[Dictionary] # of which the dictionary contains Name: Name, Coords: Vector2i and Layer: FG or Layer: BG
 var deleted_objects: Array[int] # an array of indexes of objects_list that are currently empty from deletion
@@ -34,8 +36,8 @@ var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name
 var select_pos: Vector2i: # the grid position you have selected
 	set(value):
 		select_pos = Vector2i(
-				clamp(value.x, 0, fg_layer.get_used_rect().size.x - 3), # To include the side padding
-				clamp(value.y, 0, fg_layer.get_used_rect().size.y - 20) # To include the top padding
+				clamp(value.x, 0, grid_size.x - 1),
+				clamp(value.y, 0, grid_size.y - 1)
 		)
 		# You may be asking: Why don't we just use the occupied grid directly always?
 		# Well, we probably could do something efficient that doesn't check for collisions at all,
@@ -164,7 +166,21 @@ func _on_remove_button_pressed() -> void:
 				delete_object(suggest.object_index)
 
 func _on_end_button_pressed() -> void:
-	# TODO: Save something here
+	name_popup.show()
+
+func _on_file_save_button_pressed() -> void:
+	if file_name.text.is_empty(): return
+	var objects_csv_string: String
+	objects_csv_string = "%d,%d" % [grid_size.x, grid_size.y]
+	for object:Dictionary in objects_list:
+		if object.is_empty(): continue
+		var obj_string: String
+		var obj_size: Vector2i = Game.object_sizes[object.name]
+		obj_string = "\n%s,%d,%d,%d,%d" % [object.name, object.coords.x, object.coords.y, obj_size.x, obj_size.y]
+		objects_csv_string += obj_string
+	var file: FileAccess = FileAccess.open("res://Levels/%s.csv" % file_name.text, FileAccess.WRITE)
+	file.store_string(objects_csv_string)
+	name_popup.hide()
 	get_tree().quit()
 
 func _on_selection_toggled(toggled_on: bool) -> void:
@@ -244,7 +260,6 @@ func highlight_error():
 		error_cooldown.start()
 
 func place_object(tile: StringName, pos: Vector2i, fg = null, user: bool = false) -> bool:
-	print("Attempting to place object....")
 	if fg == null: fg = Game.fg_objects.has(tile)
 	
 	var selected_size: Vector2i = Game.object_sizes[tile]
@@ -288,7 +303,7 @@ func place_object(tile: StringName, pos: Vector2i, fg = null, user: bool = false
 	if user:
 		error_cooldown.start() # To make dragging tiles not error
 		error_highlight.play("RESET")
-	print("Placed Object!")
+	print("Placed %s at %d,%d" % [tile, pos.x, pos.y])
 	return true
 
 func generate_map() -> void:
@@ -297,12 +312,12 @@ func generate_map() -> void:
 	# This is because there are some tiles that have blank tiles in the top left
 	# So I want the origin of everything to be bottom left
 	
-	occupied_fg_grid.resize(grid_size.x as int - 2) # Ignore boundaries
-	occupied_bg_grid.resize(grid_size.x as int - 2)
+	occupied_fg_grid.resize(grid_size.x as int) # Ignore boundaries
+	occupied_bg_grid.resize(grid_size.x as int)
 	for x in occupied_fg_grid:
-		x.resize(grid_size.y as int - 2)
+		x.resize(grid_size.y as int)
 	for x in occupied_bg_grid:
-		x.resize(grid_size.y as int - 2)
+		x.resize(grid_size.y as int)
 		
 	var add_to_grid: Callable = func(_grid: Array[Array], coords: Vector2i, index: int) -> void:
 		_grid[coords.x][coords.y] = index
@@ -393,8 +408,8 @@ func generate_map() -> void:
 				objects_list.append(new_object(info.name, coords, layer_name))
 				
 	# -2 here because of the boundaries; one in the negatives, one positive + 1
-	for x in grid_size.x - 2:
-		for y in grid_size.y - 2:
+	for x in grid_size.x:
+		for y in grid_size.y:
 			var coords := Vector2i(x as int, y as int)
 			
 			find_and_add_tile.call(coords, true)
@@ -435,6 +450,7 @@ func delete_object(object_index: int) -> void:
 	if object_index == -1: return # trying to delete an empty tile!
 	if objects_list[object_index].is_empty(): return # already deleted!
 	var layer_name: StringName = objects_list[object_index].layer
+	var deleted_object = objects_list[object_index].duplicate()
 	objects_list[object_index] = {}
 	var occupied_grid: Array[Array]
 	var layer: TileMapLayer
@@ -455,6 +471,8 @@ func delete_object(object_index: int) -> void:
 				
 	for coords: Vector2i in delete_coords:
 		layer.set_cell(coords) # delete the tile at this cell
+
+	print("Deleted %s at %d,%d" % [deleted_object.name, deleted_object.coords.x, deleted_object.coords.y])
 		
 	deleted_objects.append(object_index)
 	

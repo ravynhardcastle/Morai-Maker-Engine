@@ -115,7 +115,6 @@ func render_placeables() -> void:
 						image.blit_rect(cell_image.get_region(region), 
 								Rect2i(tile_size_rect.position, tile_size_rect.size * placeable_tile_size), 
 								Vector2i(x * tileset.tile_size.x, y * tileset.tile_size.y))
-						print(tile_name, Rect2i(tile_size_rect.position, tile_size_rect.size * placeable_tile_size))
 			elif source is TileSetScenesCollectionSource:
 				# For now, making an assumption that scene placeables will be one tile (that is the scene)
 				# More complicated logic needed if this assumption is violated

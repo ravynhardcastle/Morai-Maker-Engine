@@ -8,7 +8,7 @@ __pycache__/
 __pycache__.meta
 *.pyc
 *.pyc.meta
-Pretraining/
+
 # Godot 4.2+ specific ignores
 ~*.dll
 
@@ -25,5 +25,4 @@ export_credentials.cfg
 # Imported translations (automatically generated from CSV files)
 *.translation
 
-# Model weights
-Model/Server.weights.h5
+Levels/*.csv
