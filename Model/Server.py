@@ -394,34 +394,29 @@ def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_
 	return mask
 #endregion
 # ————— END New Implementation ————— #
+# BETTER MODEL BUILDING THAT CAN TAKE IN PARAMS FOR TUNING
 MODEL_PATH = Path("Server.weights.h5")
-def server_build_model():
+def server_build_model(learning_rate=0.0005, conv_filters=(4, 8, 16), kernel_sizes=(4, 3, 3), activation='relu'):
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
 	network_inputs = layers.Input(shape=(40,15,len(allNames)))
-	#conv = conv_2d(networkInput, 8, 4, activation='leaky_relu')
-	conv = layers.Conv2D(filters=8, kernel_size=4, activation='leaky_relu')(network_inputs)
-	#conv2 = conv_2d(conv, 16, 3, activation='leaky_relu')
-	conv2 = layers.Conv2D(filters=16, kernel_size=3, activation='leaky_relu')(conv)
-	#conv3 = conv_2d(conv2, 32, 3, activation='leaky_relu')
-	conv3 = layers.Conv2D(filters=32, kernel_size=3, activation='leaky_relu')(conv2)
-	#fc = tflearn.fully_connected(conv3, 40 * 15 * len(actions), activation='leaky_relu')
-	flatten_layer = layers.Flatten()(conv3) #unsure if I need this
-	fc = layers.Dense(40 * 15 * len(actions), activation='leaky_relu')(flatten_layer)
-	#mapShape = tf.reshape(fc, [-1, 40, 15, len(actions)])
+	conv = network_inputs
+	for filters, kernel in zip(conv_filters, kernel_sizes):
+		conv = layers.Conv2D(filters=filters, kernel_size=kernel, activation=activation)(conv)
+	flatten_layer = layers.Flatten()(conv)
+	fc = layers.Dense(40 * 15 * len(actions), activation=activation)(flatten_layer)
 	network_output = layers.Reshape((40, 15, len(actions)))(fc)
-	#network = tflearn.regression(mapShape, optimizer='adam', metric='accuracy', loss='mean_square', learning_rate=0.004)
 	model = models.Model(inputs=network_inputs, outputs=network_output)
 	model.compile(
-		optimizer=optimizers.Adam(learning_rate=0.001),
+		optimizer=optimizers.Adam(learning_rate=learning_rate),
 		loss='mean_squared_error',
 		metrics=['accuracy']
 	)
 	return model
-def server_create_model():
+def server_create_model(force_retrain: bool = False):
 	model = server_build_model()
 	try:
 		# try to load the model if we have one
-		if MODEL_PATH.exists() :
+		if MODEL_PATH.exists() and (not force_retrain) :
 			print("[Server] We have a pretrained model, loading it.")
 			model.load_weights(str(MODEL_PATH))
 		else:
@@ -468,7 +463,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	# ————— END Caches ————— #
 	# WAIT FOR PROMPT
 
-	minimumInteractionConfidence = 0.01 # trying something lower than 0.01
+	minimumInteractionConfidence = 0.0001 # trying something lower than 0.01
 	confidenceDelta = 0.001
 	map_length = 40  # Left to right
 	map_height = 15  # Top to bottom
@@ -666,7 +661,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 
 def main():
 	config = ServerConfig()
-	model = server_create_model()
+	model = server_create_model(force_retrain=False)
 	socket = server_create_socket(config)
 	server_connection_handler(config=config, socket=socket, model=model)
 

@@ -331,6 +331,14 @@ def construct_training_windows(finalTrainingSet):
 	trainX = np.reshape(trainX, (-1, window_width, full_map_height, len(allNames)))
 	trainY = np.reshape(trainY, (-1, window_width, full_map_height, len(actions)))
 	return trainX, trainY
+
+def load_datasets():
+	finalScores = load_final_scores()
+	trainingExamplesByPlayer = load_training_examples_by_player(finalScores)
+	finalTrainingSet, finalTestingSet = create_training_test_split(trainingExamplesByPlayer)
+	trainX, trainY = construct_training_windows(finalTrainingSet)
+	testX, testY = construct_training_windows(finalTestingSet)
+	return trainX, trainY, testX, testY
 #endregion
 # ————— END DATA LOADING ————— #
 
@@ -353,8 +361,8 @@ def pre_training(force_train: bool = False):
 	model = server_build_model()
 	model.fit(x=trainX,
 			  y=trainY,
-			  epochs=20,
-			  batch_size=128,
+			  epochs=40,
+			  batch_size=32,
 			  shuffle=True,
 			  verbose=0,
 			  callbacks=[TqdmCallback(verbose=1)])
