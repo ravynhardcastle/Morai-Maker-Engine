@@ -413,6 +413,8 @@ def server_build_model(learning_rate=0.0005, conv_filters=(4, 8, 16), kernel_siz
 	)
 	return model
 def server_create_model(force_retrain: bool = False):
+	if(force_retrain):
+		print("[Server] Force retrain is set to true. if this is an accident change it in main()")
 	model = server_build_model()
 	try:
 		# try to load the model if we have one
@@ -661,7 +663,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 
 def main():
 	config = ServerConfig()
-	model = server_create_model(force_retrain=False)
+	model = server_create_model(force_retrain=True)
 	socket = server_create_socket(config)
 	server_connection_handler(config=config, socket=socket, model=model)
 
