@@ -146,10 +146,11 @@ canvas_cull_mask = 4294967283
 size = Vector2i(1920, 719)
 render_target_update_mode = 4
 
-[node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 node_paths=PackedStringArray("name_popup", "file_name") instance=ExtResource("3_o8ses")]
-position = Vector2(25, -2)
+[node name="TileMap" parent="UserInterface/Game/Tiles/TileViewport" unique_id=371769574 node_paths=PackedStringArray("name_popup", "file_name", "save_file", "load_file") instance=ExtResource("3_o8ses")]
 name_popup = NodePath("../../../../../EndPrompt")
 file_name = NodePath("../../../../../EndPrompt/PromptMargins/Prompt/FileName")
+save_file = NodePath("../../../../../SaveFile")
+load_file = NodePath("../../../../../OpenFile")
 
 [node name="BottomContainer" type="PanelContainer" parent="UserInterface" unique_id=2132795045]
 layout_mode = 2
@@ -314,6 +315,38 @@ theme = ExtResource("3_55rxr")
 text = "END
 TURN"
 
+[node name="SaveFile" type="FileDialog" parent="." unique_id=1890105035]
+oversampling_override = 1.0
+title = "Save Level"
+initial_position = 1
+size = Vector2i(640, 500)
+ok_button_text = "Save Level"
+dialog_hide_on_ok = true
+display_mode = 1
+root_subfolder = "Levels"
+filters = PackedStringArray("*.csv")
+hidden_files_toggle_enabled = false
+file_filter_toggle_enabled = false
+file_sort_options_enabled = false
+favorites_enabled = false
+recent_list_enabled = false
+layout_toggle_enabled = false
+
+[node name="OpenFile" type="FileDialog" parent="." unique_id=1829761653]
+oversampling_override = 1.0
+title = "Open a File"
+initial_position = 1
+size = Vector2i(640, 500)
+ok_button_text = "Open Level"
+dialog_hide_on_ok = true
+file_mode = 0
+display_mode = 1
+access = 2
+filters = PackedStringArray("*.csv")
+hidden_files_toggle_enabled = false
+folder_creation_enabled = false
+layout_toggle_enabled = false
+
 [node name="EndPrompt" type="PopupPanel" parent="." unique_id=1662779318]
 canvas_item_default_texture_filter = 0
 oversampling_override = 1.0
@@ -362,4 +395,6 @@ text = "Save"
 [connection signal="pressed" from="UserInterface/FileContainer/FileMargins/FileMenu/EndButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_button_pressed"]
 [connection signal="toggled" from="UserInterface/BottomContainer/BottomDisplay/SelectionMinimap/Selection" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_selection_toggled"]
 [connection signal="pressed" from="UserInterface/BottomContainer/BottomDisplay/EndTurnMenu/EndTurnButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_end_turn_button_pressed"]
+[connection signal="file_selected" from="SaveFile" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_save_file_file_selected"]
+[connection signal="file_selected" from="OpenFile" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_open_file_file_selected"]
 [connection signal="pressed" from="EndPrompt/PromptMargins/Prompt/SaveButton" to="UserInterface/Game/Tiles/TileViewport/TileMap" method="_on_file_save_button_pressed"]

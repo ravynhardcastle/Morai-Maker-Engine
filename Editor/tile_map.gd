@@ -14,6 +14,8 @@ extends Node2D
 @export var selecting_box: Node2D
 @export var name_popup: PopupPanel
 @export var file_name: LineEdit
+@export var save_file: FileDialog
+@export var load_file: FileDialog
 @onready var fg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "ForegroundLayer")]
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
 @onready var grid_size: Vector2 = fg_layer.get_used_rect().size - Vector2i(2, 19) # Remove padding, there's some top padding
@@ -29,8 +31,6 @@ var selection_positive: bool
 var selection_start: Vector2i
 var selection_end: Vector2i
 var selections: Array[Dictionary] # Dictionary is like "selection": Rect2i "positive": bool
-
-var saved_objects_list: Array[Dictionary] = objects_list.duplicate()
 
 var scene_info_cache: Dictionary # Dictionary[PackedScene, {size: Vector2i, name: StringName}]
 var select_pos: Vector2i: # the grid position you have selected
@@ -148,12 +148,24 @@ func _on_run_button_pressed() -> void:
 	pass
 
 func _on_save_button_pressed() -> void:
-	saved_objects_list = objects_list.duplicate()
+	save_file.show()
+
+func _on_save_file_file_selected(path: String) -> void:
+	save_level(path)
 
 func _on_load_button_pressed() -> void:
+	load_file.show()
+
+func _on_open_file_file_selected(path: String) -> void:
+	var file: FileAccess = FileAccess.open(path, FileAccess.READ)
+	var size: PackedStringArray = file.get_csv_line()
+	if size.size() != 2: return # Not a size
+	level_resize(size[0].to_int(), size[1].to_int())
 	clear()
-	for object: Dictionary in saved_objects_list:
-		place_object(object.name, object.coords)
+	while file.get_position() < file.get_length():
+		var object: PackedStringArray = file.get_csv_line()
+		if object.size() != 5: return # Not an object
+		place_object(object[0], Vector2i(object[1].to_int(), size[1].to_int() - 1 - object[2].to_int()))
 
 func _on_clear_button_pressed() -> void:
 	clear()
@@ -169,19 +181,9 @@ func _on_end_button_pressed() -> void:
 	name_popup.show()
 
 func _on_file_save_button_pressed() -> void:
-	if file_name.text.is_empty(): return
-	var objects_csv_string: String
-	objects_csv_string = "%d,%d" % [grid_size.x, grid_size.y]
-	for object:Dictionary in objects_list:
-		if object.is_empty(): continue
-		var obj_string: String
-		var obj_size: Vector2i = Game.object_sizes[object.name]
-		obj_string = "\n%s,%d,%d,%d,%d" % [object.name, object.coords.x, object.coords.y, obj_size.x, obj_size.y]
-		objects_csv_string += obj_string
-	var file: FileAccess = FileAccess.open("res://Levels/%s.csv" % file_name.text, FileAccess.WRITE)
-	file.store_string(objects_csv_string)
-	name_popup.hide()
-	get_tree().quit()
+	if save_level("res://Levels/%s.csv" % file_name.text):
+		name_popup.hide()
+		get_tree().quit()
 
 func _on_selection_toggled(toggled_on: bool) -> void:
 	preference_selecting = toggled_on
@@ -479,3 +481,24 @@ func delete_object(object_index: int) -> void:
 func clear() -> void:
 	for object: int in objects_list.size():
 		delete_object(object)
+	
+	objects_list = []
+	deleted_objects = []
+
+func save_level(directory: String) -> bool: # true if succeeds, false if fails
+	if directory.is_empty() or directory == "res://Levels/.csv": return false
+	var objects_csv_string: String
+	objects_csv_string = "%d,%d" % [grid_size.x, grid_size.y]
+	for object:Dictionary in objects_list:
+		if object.is_empty(): continue
+		var obj_string: String
+		var obj_size: Vector2i = Game.object_sizes[object.name]
+		obj_string = "\n%s,%d,%d,%d,%d" % [object.name, object.coords.x, grid_size.y - 1 - object.coords.y, obj_size.x, obj_size.y]
+		objects_csv_string += obj_string
+	var file: FileAccess = FileAccess.open(directory, FileAccess.WRITE)
+	file.store_string(objects_csv_string)
+	return true
+
+func level_resize(x: int, y: int):
+	# TODO: change level from the 100x15 default size
+	pass
