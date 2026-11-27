@@ -7,6 +7,7 @@ var pending: Array
 var last_status: int = StreamPeerTCP.STATUS_NONE
 var bHasSentCache:bool = false
 var tile_size: int
+var grid_size: Vector2i
 
 var object_sizes: Dictionary[StringName, Vector2i] # Object size by RL name
 var rl_name_to_placeable: Dictionary[StringName, TileMapPattern]
@@ -90,13 +91,15 @@ func _on_receive_suggestion(suggestion: Array) -> void:
 	last_suggestion = [] # Empty it out, it gets defined in tile_map.gd
 	for suggest: Dictionary in suggestion:
 		var tile: StringName = suggest.name
-		var coords: Vector2i = Vector2i(suggest.coords[0], suggest.coords[1])
+		var coords: Vector2i = Vector2i(suggest.coords[0], grid_size.y - 1 - suggest.coords[1]) # Flip y-axis since python operates 0, 0 on bottom left
 		receive_suggestion.emit(tile, coords)
 	
 
 		
 func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array], occupied_bg_grid: Array[Array], selections_list: Array[Dictionary], camera_position: int) -> void: # info in tile_map.gd
 	print("Sending game state to python server for calculation")
+	# Importantly, we flip the y-axis when sending to python, since it's expecting 0, 0 to be bottom left
+	
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings
 	var objects: Array
 	for object in objects_list:
@@ -104,7 +107,7 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 		clone[&"coords"] = [-1, -1]
 		if object.has(&"coords"):
 			var coords: Vector2i = object[&"coords"]
-			clone[&"coords"] = [coords.x, coords.y]
+			clone[&"coords"] = [coords.x, grid_size.y - 1 - coords.y]
 		objects.append(clone)
 	
 	var selections: Array[Dictionary] # "size": [x, y] Array; "position": [x, y] Array; "positive": Bool
@@ -112,7 +115,7 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 		var new: Dictionary
 		var rect: Rect2i = selection[&"selection"]
 		new["size"] = [floori(rect.size.x as float / tile_size), floori(rect.size.y as float/tile_size)]
-		new["position"] = [floori(rect.position.x as float/tile_size), floori(rect.position.y as float/tile_size)]
+		new["position"] = [floori(rect.position.x as float/tile_size), grid_size.y - 1 - floori(rect.position.y as float/tile_size)]
 		new["positive"] = selection[&"positive"] # true or false
 		selections.append(new)
 		
