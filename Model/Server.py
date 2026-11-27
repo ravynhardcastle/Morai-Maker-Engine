@@ -396,7 +396,7 @@ def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_
 # ————— END New Implementation ————— #
 # BETTER MODEL BUILDING THAT CAN TAKE IN PARAMS FOR TUNING
 MODEL_PATH = Path("Server.weights.h5")
-def server_build_model(learning_rate=0.0005, conv_filters=(4, 8, 16), kernel_sizes=(4, 3, 3), activation='relu'):
+def server_build_model(learning_rate=0.0005, conv_filters=(4, 8, 16), kernel_sizes=(4, 3, 3), activation='leaky_relu'):
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
 	network_inputs = layers.Input(shape=(40,15,len(allNames)))
 	conv = network_inputs
