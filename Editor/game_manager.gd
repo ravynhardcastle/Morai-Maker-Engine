@@ -100,9 +100,11 @@ func send_state(objects_list: Array[Dictionary], occupied_fg_grid: Array[Array],
 	print("Sending game state to python server for calculation")
 	# Importantly, we flip the y-axis when sending to python, since it's expecting 0, 0 to be bottom left
 	for column: Array in occupied_fg_grid:
-		column.reverse()
+		#column.reverse()
+		pass
 	for column: Array in occupied_bg_grid:
-		column.reverse()
+		#column.reverse()
+		pass
 	
 	
 	# We need to convert the Vector2i's to arrays or else they'll just send as strings

@@ -663,7 +663,7 @@ def server_connection_handler(config: ServerConfig, socket, model):
 
 def main():
 	config = ServerConfig()
-	model = server_create_model(force_retrain=True)
+	model = server_create_model(force_retrain=False)
 	socket = server_create_socket(config)
 	server_connection_handler(config=config, socket=socket, model=model)
 
