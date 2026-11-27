@@ -18,7 +18,7 @@ extends Node2D
 @export var load_file: FileDialog
 @onready var fg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "ForegroundLayer")]
 @onready var bg_layer:TileMapLayer = layers[layers.find_custom(func(layer): return layer.name == "BackgroundLayer")]
-@onready var grid_size: Vector2 = fg_layer.get_used_rect().size - Vector2i(2, 19) # Remove padding, there's some top padding
+@onready var grid_size: Vector2i = fg_layer.get_used_rect().size - Vector2i(2, 19) # Remove padding, there's some top padding
 @onready var tile_size: int = fg_layer.tile_set.tile_size.x
 var objects_list: Array[Dictionary] # of which the dictionary contains Name: Name, Coords: Vector2i and Layer: FG or Layer: BG
 var deleted_objects: Array[int] # an array of indexes of objects_list that are currently empty from deletion
@@ -43,11 +43,11 @@ var select_pos: Vector2i: # the grid position you have selected
 		# Well, we probably could do something efficient that doesn't check for collisions at all,
 		# but we need to differentiate between FG and BG anyways, so I use this approach
 		var selecting_fg: bool = false # Whether we're selecting a foreground block
-		var selecting: bool = false # Whether we're selecting anything at all
+		var is_selecting: bool = false # Whether we're selecting anything at all
 		if Game.selected_tile and Game.selected_tile.tile:
 			selecting_fg = Game.selected_tile.fg
-			selecting = true
-		if not cursor_collider.get_overlapping_areas().is_empty() and (selecting_fg or not selecting):
+			is_selecting = true
+		if not cursor_collider.get_overlapping_areas().is_empty() and (selecting_fg or not is_selecting):
 			# Ideally this would only run whenever the select_pos actually changes, to simplify computation
 			# However when you move the mouse really fast sometimes this isn't reliable
 			var object_area: Area2D = cursor_collider.get_overlapping_areas()[0]
@@ -68,10 +68,10 @@ var select_pos: Vector2i: # the grid position you have selected
 					layer = &"BG"
 				if tile:
 					if layer == &"FG":
-						if selecting and !selecting_fg: selected_object = -1
+						if is_selecting and !selecting_fg: selected_object = -1
 						else: selected_object = occupied_fg_grid[select_pos.x][select_pos.y]
 					else:
-						if selecting and selecting_fg: selected_object = -1
+						if is_selecting and selecting_fg: selected_object = -1
 						else: selected_object = occupied_bg_grid[select_pos.x][select_pos.y]
 			else:
 				selected_object = -1 # Nothing is selected
@@ -102,6 +102,7 @@ var select_rect: Rect2i # the shape that the object is
 
 func _ready() -> void:
 	Game.tile_size = tile_size
+	Game.grid_size = grid_size
 	shadow_viewport.world_2d = get_viewport().world_2d
 	shadow_rect.material.set_shader_parameter("caster_texture", shadow_viewport.get_texture())
 	RenderingServer.frame_pre_draw.connect(_sync_shadow_transform)
@@ -219,7 +220,7 @@ func _sync_cursor() -> void:
 			
 func _sync_shadow_transform() -> void:
 	shadow_viewport.canvas_transform = get_viewport().canvas_transform
-			
+
 func _on_grid_draw() -> void:
 	var lines := PackedVector2Array()
 	for y in range(grid_size.y):
