@@ -156,9 +156,9 @@ def load_training_examples_by_player(finalScores):
 					lastHit = float(splits[-1])
 		if not len(aiActions.keys()) == 0:
 			# Final state
-			s1 = copy.deepcopy(currentPrevState)
-			a1 = copy.deepcopy(aiActions)
-			s2 = copy.deepcopy(blocks)
+			s1 = dict(currentPrevState)
+			a1 = dict(aiActions)
+			s2 = dict(blocks)
 			thisSequence.append([s1, a1, s2])
 
 		if not blocks.keys() == 0 and len(thisSequence) > 0:
@@ -312,7 +312,7 @@ def construct_training_windows(finalTrainingSet):
 				if midPoint + 20 >= full_map_width:
 					midPoint -= (midPoint + 20) - full_map_width
 				if midPoint - 20 < 0:
-					midPoint += -1 * midPoint - 20
+					midPoint = 20#+= -1 * midPoint - 20 [OLD THAT IM CHANGING]
 				finalx = []
 				finaly = []
 				for x in range(midPoint - 20, midPoint + 20):
@@ -361,7 +361,7 @@ def pre_training(force_train: bool = False):
 	model = server_build_model()
 	model.fit(x=trainX,
 			  y=trainY,
-			  epochs=40,
+			  epochs=8,
 			  batch_size=32,
 			  shuffle=True,
 			  verbose=0,

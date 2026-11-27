@@ -403,7 +403,7 @@ def server_build_model(learning_rate=0.0005, conv_filters=(4, 8, 16), kernel_siz
 	for filters, kernel in zip(conv_filters, kernel_sizes):
 		conv = layers.Conv2D(filters=filters, kernel_size=kernel, activation=activation)(conv)
 	flatten_layer = layers.Flatten()(conv)
-	fc = layers.Dense(40 * 15 * len(actions), activation=activation)(flatten_layer)
+	fc = layers.Dense(40 * 15 * len(actions), activation=activation)(flatten_layer) #TODO: trying to remove the activation from this
 	network_output = layers.Reshape((40, 15, len(actions)))(fc)
 	model = models.Model(inputs=network_inputs, outputs=network_output)
 	model.compile(
