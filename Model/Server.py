@@ -385,6 +385,13 @@ def server_connection_handler(config: ServerConfig, socket, model, minimumIntera
 	# ————— Caches ————— #
 	object_sizes = {} # Initialize the cache
 	object_layers = {} # Initialize the cache
+	
+	# Reset every turn, passed through the entire pipeline so that evaluation can keep them updated
+	fg_grid = []
+	bg_grid = []
+	actionMask = None
+	world = None
+	negatives = None
 
 	'''
 	This is the cache that holds all the selection information for the running application. It is in the following format:
@@ -395,10 +402,10 @@ def server_connection_handler(config: ServerConfig, socket, model, minimumIntera
 	# WAIT FOR PROMPT
 
 	while 1:
-		if attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prevMap, prevAction, prevStartX, rejections, object_sizes, object_layers, selection_cache) == False:
+		if attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prevMap, prevAction, prevStartX, rejections, object_sizes, object_layers, selection_cache, fg_grid, bg_grid, actionMask, world, negatives) == False:
 			break
 
-def attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prevMap, prevAction, prevStartX: int, rejections: list, object_sizes: dict, object_layers: dict, selection_cache: list) -> bool | None:
+def attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prevMap, prevAction, prevStartX: int, rejections: list, object_sizes: dict, object_layers: dict, selection_cache: list, fg_grid: list, bg_grid: list, actionMask, world, negatives, reply: bool = True) -> bool | None:
 	try:
 		length = struct.unpack(">I", server_receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
 		data = json.loads(server_receive(length, conn))
@@ -482,83 +489,12 @@ def attempt_server_receive(conn, model, minimumInteractionConfidence, confidence
 							  batch_size=1,)
 
 			#predY = model.predict([currMap])
-			predY = model.predict(np.array([currMap]))
-			thisAction = GetEmptyMap(actions)
+			
 
 			# REPLY
-			toString = ""
-			nothingSent = True
-			maxToSend = []
-			maxVal = -1
-
-			sents = []
-			for x in range(0, map_length):
-				for y in range(0, map_height):
-					for z in range(0, len(actions)):
-						if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(sents) < 30 and actionMask[x][y][z]:
-							if not [actions[z], x + thisStartX, y] in rejections:
-								#conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*") # Commenting out to try a different style
-
-								# ACTION MASKING, MAKE SURE WE NOTE THAT WE ARE CLAIMING SPACE
-								# We try to claim the space (if we can)
-								placed_grid = fg_grid if object_layers[actions[z]] == "fg" else bg_grid
-								fill_grid = server_check_tile_placement(actions[z], (x + thisStartX, y), placed_grid, object_sizes)
-								# nah, cant do it
-								if fill_grid is None:
-									continue
-
-								# NEW: batch-aware negative selection check
-								y_bottom = (map_height - 1) - y  # grid y (from the top) -> y from the bottom
-								layer = object_layers[actions[z]]
-								if negatives and would_complete_negative(actions[z], layer, x + thisStartX, y_bottom, world, negatives):
-									continue  # this would finish a negative shape, skip it
-								world.add((actions[z], layer.lower(), x + thisStartX,y_bottom))  # later suggestions in this batch see it
-								# fill our local grid so we dont try to play ontop of it later
-								server_fill_placement(fill_grid, placed_grid)
-								# END ACTION MASKING INCLUSION ————————————————————————————————
-
-								sents.append([x, y, z])
-								print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
-								rejections.append([actions[z], x + thisStartX, y])
-								thisAction[x][y][z] = predY[0][x][y][z]
-								nothingSent = False
-						elif nothingSent:
-							if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1 and actionMask[x][y][z]:
-								if not [actions[z], x + thisStartX, y] in rejections:
-									maxToSend = [x, y, z, predY[0][x][y][z]]
-									maxVal = predY[0][x][y][z]
-			# MUST DO SOMETHING
-			if nothingSent and len(maxToSend) > 0:
-				thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
-				sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
-				#rejections.append([actions[maxToSend[2]], maxToSend[0] + thisStartX, maxToSend[1]]) # Do we need to do this? im unsure
-				#conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*") # since we are appending,
-				# at the above line, we dont need to send this individually
-				print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
-
-			# SLight change in format, all suggestions are gonna be sent at the very end!
-			# the format being chosen is:
-			'''
-			"coords" : (int, int), (x,y), the coordinates of the suggestion
-			"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
-			"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
-			"confidence" : float, the confidence of the suggestion, from the model
-			'''
-			server_suggestions = []
-			for sent in sents:
-				server_suggestions.append({
-					"coords": (sent[0] + thisStartX, sent[1]),
-					"name": actions[sent[2]],
-					"size": object_sizes.get(actions[sent[2]]),  # default size is 1x1 if not found in cache
-					"confidence": float(predY[0][sent[0]][sent[1]][sent[2]])
-				})
-
-			# Yippie, time to send to Godot!
-			server_send({"suggestions": server_suggestions}, conn)
-			prevMap = list(currMap)
-			prevAction = list(thisAction)
-			prevStartX = thisStartX
-		#conn, addr = socket.accept()  # Reset (i dont think we actually want to do this? NOPE we dont lol)
+			if reply:
+				server_reply(conn, model, minimumInteractionConfidence, confidenceDelta, currMap, thisStartX, rejections, object_sizes, object_layers, fg_grid, bg_grid, actionMask, world, negatives)
+			
 			return True
 	except ConnectionError as e:
 		print(f"[Server] Connection error: {e}. CLosing Connection")
@@ -572,7 +508,84 @@ def attempt_server_receive(conn, model, minimumInteractionConfidence, confidence
 	
 	return None
 
+def server_reply(conn, model, minimumInteractionConfidence, confidenceDelta, currMap, thisStartX: int, rejections: list, object_sizes: dict, object_layers: dict, fg_grid, bg_grid, actionMask, world, negatives, override_actions: dict[int, dict[int, list[int]]] | None = None):
+	# TODO: Override actions
+	predY = model.predict(np.array([currMap]))
+	thisAction = GetEmptyMap(actions)
+	
+	toString = ""
+	nothingSent = True
+	maxToSend = []
+	maxVal = -1
 
+	sents = []
+	for x in range(0, map_length):
+		for y in range(0, map_height):
+			for z in range(0, len(actions)):
+				if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(sents) < 30 and actionMask[x][y][z]:
+					if not [actions[z], x + thisStartX, y] in rejections:
+						#conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*") # Commenting out to try a different style
+
+						# ACTION MASKING, MAKE SURE WE NOTE THAT WE ARE CLAIMING SPACE
+						# We try to claim the space (if we can)
+						placed_grid = fg_grid if object_layers[actions[z]] == "fg" else bg_grid
+						fill_grid = server_check_tile_placement(actions[z], (x + thisStartX, y), placed_grid, object_sizes)
+						# nah, cant do it
+						if fill_grid is None:
+							continue
+
+						# NEW: batch-aware negative selection check
+						y_bottom = (map_height - 1) - y  # grid y (from the top) -> y from the bottom
+						layer = object_layers[actions[z]]
+						if negatives and would_complete_negative(actions[z], layer, x + thisStartX, y_bottom, world, negatives):
+							continue  # this would finish a negative shape, skip it
+						world.add((actions[z], layer.lower(), x + thisStartX,y_bottom))  # later suggestions in this batch see it
+						# fill our local grid so we dont try to play ontop of it later
+						server_fill_placement(fill_grid, placed_grid)
+						# END ACTION MASKING INCLUSION ————————————————————————————————
+
+						sents.append([x, y, z])
+						print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
+						rejections.append([actions[z], x + thisStartX, y])
+						thisAction[x][y][z] = predY[0][x][y][z]
+						nothingSent = False
+				elif nothingSent:
+					if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1 and actionMask[x][y][z]:
+						if not [actions[z], x + thisStartX, y] in rejections:
+							maxToSend = [x, y, z, predY[0][x][y][z]]
+							maxVal = predY[0][x][y][z]
+	# MUST DO SOMETHING
+	if nothingSent and len(maxToSend) > 0:
+		thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
+		sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
+		#rejections.append([actions[maxToSend[2]], maxToSend[0] + thisStartX, maxToSend[1]]) # Do we need to do this? im unsure
+		#conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*") # since we are appending,
+		# at the above line, we dont need to send this individually
+		print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
+
+	# SLight change in format, all suggestions are gonna be sent at the very end!
+	# the format being chosen is:
+	'''
+	"coords" : (int, int), (x,y), the coordinates of the suggestion
+	"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
+	"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
+	"confidence" : float, the confidence of the suggestion, from the model
+	'''
+	server_suggestions = []
+	for sent in sents:
+		server_suggestions.append({
+			"coords": (sent[0] + thisStartX, sent[1]),
+			"name": actions[sent[2]],
+			"size": object_sizes.get(actions[sent[2]]),  # default size is 1x1 if not found in cache
+			"confidence": float(predY[0][sent[0]][sent[1]][sent[2]])
+		})
+
+	# Yippie, time to send to Godot!
+	server_send({"suggestions": server_suggestions}, conn)
+	prevMap = list(currMap)
+	prevAction = list(thisAction)
+	prevStartX = thisStartX
+	#conn, addr = socket.accept()  # Reset (i dont think we actually want to do this? NOPE we dont lol)
 
 def main():
 	config = ServerConfig()

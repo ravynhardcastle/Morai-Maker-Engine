@@ -3,7 +3,7 @@
 from Pretraining import data_path, scores_path, testNames # use the same ones from Pretraining.py
 from tile_config import allNames
 from Extraction import extract_levels
-from Server import server_create_model, ServerConfig, server_create_socket, server_send, init_server, attempt_server_receive, minimumInteractionConfidence, confidenceDelta
+from Server import server_create_model, ServerConfig, server_create_socket, server_send, init_server, attempt_server_receive, server_reply, minimumInteractionConfidence, confidenceDelta
 import json
 import csv, time, struct
 from dataclasses import dataclass
@@ -40,6 +40,13 @@ def main():
 	object_sizes = {} # Initialize the cache
 	object_layers = {} # Initialize the cache
 
+	# Reset every turn
+	fg_grid = []
+	bg_grid = []
+	actionMask = None
+	world = None
+	negatives = None
+
 	'''
 	This is the cache that holds all the selection information for the running application. It is in the following format:
 	List<Selection_Object>. Where a Selection 
@@ -47,12 +54,12 @@ def main():
 	selection_cache = []
 	# ————— END Caches ————— #
 
-	def server_send_actions(actions: dict[int, dict[int, list[int]]]):
-		pass
+	def server_send_actions(override_actions: dict[int, dict[int, list[int]]]):
+		server_reply(conn, model, minimumInteractionConfidence, confidenceDelta, prev_map, prev_action, prev_start_x, rejections, object_sizes, object_layers, selection_cache, fg_grid, bg_grid, actionMask, world, negatives, override_actions)
 
 	def server_receive() -> bool:
 		while True:
-			server_turn: bool | None = attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prev_map, prev_action, prev_start_x, rejections, object_sizes, object_layers, selection_cache)
+			server_turn: bool | None = attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prev_map, prev_action, prev_start_x, rejections, object_sizes, object_layers, selection_cache, fg_grid, bg_grid, actionMask, world, negatives, False)
 			if server_turn is None:
 				continue
 			if turn:
