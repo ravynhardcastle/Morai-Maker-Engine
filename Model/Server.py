@@ -23,88 +23,12 @@ from tile_config import allNames, actions
 class ServerConfig:
 	TCP_IP: str = '127.0.0.1' #localhost' (yeah this could stay local host, im just hard coding this for now)
 	TCP_PORT: int = 8039
-
+MODEL_PATH = Path("Server.weights.h5")
+minimumInteractionConfidence = 0.0001  # trying something lower than 0.01
+confidenceDelta = 0.001
+map_length = 40  # Left to right
+map_height = 15  # Top to bottom
 # ————— END CONFIG ————— #
-
-# ————— Old Implementation ————— #
-# region Old Implementation
-def GetEmptyMap(allNames):
-	emptyMap = []
-	for x in range(0, 40):
-		column = []
-		for y in range(0, 15):
-			column.append([0] * len(allNames))
-		emptyMap.append(column)
-	return emptyMap
-def FlattenMap(mapInput, allNames):
-	flatMap = []
-	for y in range(0, 15):
-		for x in range(0, 40):
-			for z in range(0, len(allNames)):
-				flatMap.append(mapInput[x][y][z])
-	return flatMap
-def UnflattenMap(mapInput, allNames):
-	emptyMap = GetEmptyMap(allNames)
-	for x in range(0, 40):
-		for y in range(0, 15):
-			for z in range(0, len(allNames)):
-				emptyMap[x][y][z] = mapInput[y * 40 * len(allNames) + x * len(allNames) + z]
-	return emptyMap
-def StringToList(strVal):
-	listVal = []
-	for s in strVal:
-		listVal.append(int(s))
-	return listVal
-def StringToMap(strVal, allNames):
-	emptyMap = GetEmptyMap(allNames)
-	splits1 = strVal.split("-")
-	for s1 in splits1:
-		if len(s1) > 0:
-			splits2 = s1.split("*")
-			emptyMap[int(splits2[0])][int(splits2[1])][int(splits2[2])] = 1
-	return emptyMap
-# In this 8 by 8 localized on the added point find what prompted it
-# shape=(4, 4, 34, 8)
-def GetExplanation(weights, mapVal, x, y, allNames):
-	maxPatch = [0, 0]
-	maxVal = -5
-	for xi in range(-4 + x, x):
-		for yi in range(-4 + y, y):
-			thisPatchMax = -5
-			bestfilter = -1
-			for j in range(0, 8):
-				thisScore = 0
-				for xj in range(xi, xi + 4):
-					for yj in range(yi, yi + 4):
-						if xj >= 0 and xj < 40 and yj >= 0 and yj < 15:
-							for z in range(0, 34):
-								try:
-									thisScore += float((weights[xj - xi][yj - yi][z][j] * mapVal[xj][yj][z]))
-								except IndexError:
-									thisScore += 0
-				if thisScore > thisPatchMax:
-					thisPatchMax = thisScore
-					bestfilter = j
-			if thisPatchMax > maxVal:
-				maxPatch = [xi, yi, bestfilter]
-				maxVal = thisPatchMax
-	buildString = "" + str([maxPatch[0] - x, maxPatch[1] - y, maxVal, "filter: " + str(maxPatch[2])]) + "\n"
-	for y in range(maxPatch[1] + 3, maxPatch[1] - 1, -1):
-		line = ""
-		for x in range(maxPatch[0], maxPatch[0] + 4):
-			if x >= 0 and x < 40 and y >= 0 and y < 15:
-				if 1 in mapVal[x][y]:
-					line += (allNames[mapVal[x][y].index(1)]) + "-"
-				else:
-					line += " -"
-			else:
-				line += "0-"
-		buildString += line + "\n"
-	return buildString
-#endregion
-# ————— END Old Implementation ————— #
-
-
 
 # ————— Networking Functions ————— #
 # region Networking Functions
@@ -134,18 +58,17 @@ def server_send(data: dict, connection):
 
 
 # ————— New Implementation ————— #
-#region New Implementation
-
-# Creating a new class to hold a selection.. since I think itll end up being easier to work with later?
+#region Selections
 class Selection_Object:
 	'''
-	Class that will be treated like a "siongle tile" in regards to the RL pipeline, and will be use as an "option"
+	Class that holds the selection information
 	'''
-	def __init__(self, size, objects):
+	def __init__(self, size, objects, root_position=None):
 		self.name = ""# This is whatever "name" this selection (tile) will be called
 		self.strength = 0 # this is how much the user likes this selection. high is good, low is bad
 		self.size = tuple(size) # (x,y)
 		self.objects = objects # the list of "objects" or "actions" that when done will create the selection
+		self.root_position = tuple(root_position) if root_position is not None else None # the position of the BOTTOM LEFT CORNER of the slection, with (x,y) also from the bottom left
 
 	def __eq__(self, other):
 		if not isinstance(other, Selection_Object):
@@ -156,8 +79,7 @@ class Selection_Object:
 		return hash(self.objects)
 
 	def __repr__(self):
-		return f"Selection({self.name}, size={self.size}, strength={self.strength})"
-
+		return f"Selection({self.name}, size={self.size}, strength={self.strength}, root={self.root_position}) (bottom left corner)"
 	def get_object_actions(self, origin_x, origin_y):
 		'''
 		if given a starting point, this will provide all the "objects" or "actions" that will rebuild the selection
@@ -169,17 +91,124 @@ class Selection_Object:
 							   "layer": object["layer"],
 							   "name": object["name"]})
 		return object_actions
+def server_process_godot_selection(selection_data, selection_cache, objects_data, fg_data, bg_data):
+	'''
+	selection_data is a list of dicts in the format:
+	List<{'position': [x, y], # THE TOP LEFT OF THE SELECTION, BUT THE GIVEN POSITION IS RELATIVE TO 0,0 BEING THE BOTTOM LEFT CORNER
+	      'positive': bool,
+	       'size': [width, height]}
 
+	Each selection is turned into a Selection_Object and saved in selection_cache
+	'''
+	# if we ever just don't send selection data, we will return the old selection_cache
+	if not selection_data:
+		return selection_cache
 
+	for selection_info in selection_data:
+		# obtain the selection and process it intop the custom class
+		selection, sign = obtain_selection(selection_info, objects_data, fg_data, bg_data)
+
+		# Check to see if this selection is already present within our cache
+		found_in_cache = False
+		for select in selection_cache:
+			if select == selection:
+				#TODO we may also wanna consider resetting the strength if the sign flips
+				# so if its a negative selection and we set it positive, we now treat it as positive
+				select.strength += sign
+				found_in_cache = True
+				break
+
+		if not found_in_cache:
+			selection.strength = sign
+			selection_cache.append(selection)
+	return selection_cache
+def obtain_selection(selection_info, objects_data, fg_data, bg_data):
+	'''
+	Builds a Selection_Object
+
+	root position of the selection is the BOTTOM LEFT CORNER, RELATIVE TO 0,0 BEING THE BOTTOM LEFT CORNER
+	# (this is how other objects are stored in our data set)
+	'''
+
+	# Store all our variables
+	sel_x, sel_y = selection_info["position"]
+	width, height = selection_info["size"]
+	sign = 1 if selection_info["positive"] else -1
+	map_height = len(fg_data[0])
+	grid_x = sel_x
+	grid_y = (map_height - 1) - sel_y
+
+	# Collect the index of every object inside the selection (fg and bg)
+	object_indexes = set()
+	# Watch for empty stuff that we selected
+	empty_coords = []
+	for dx in range(width):
+		for dy in range(height):
+			x = grid_x + dx
+			y = grid_y + dy
+			# edge check
+			if x < 0 or x >= len(fg_data) or y < 0 or y >= len(fg_data[x]):
+				continue
+
+			# get the object
+			found = {fg_data[x][y], bg_data[x][y]} - {-1}
+
+			# either add it as empty or not
+			if found:
+				object_indexes |= found
+			else:
+				# nothing in fg or bg, so this cell is EMPTY
+				empty_coords.append([dx, height - 1 - dy])
+
+	# The root is the bottom left cell (sel_y is the top row, so go down height - 1)
+	root_x = sel_x
+	root_y = sel_y - height + 1
+
+	objects = []
+	for index in object_indexes:
+		if 0 <= index < len(objects_data) and objects_data[index].get("name"):
+			obj = objects_data[index]
+			objects.append({"coords": [obj["coords"][0] - root_x, obj["coords"][1] - root_y],
+							"layer": obj["layer"],
+							"name": obj["name"]})
+	# EMPTY gets added at the end
+	for coords in empty_coords:
+		objects.append({"coords": coords, "layer": "fg", "name": "EMPTY"})
+
+	return Selection_Object((width, height), objects, (root_x, root_y)), sign
+### NEGATIVE SELECTIONS
+def would_complete_negative(name, layer, x, y_bottom, world, negatives):
+	'''
+	True if placing a tile with name "name" would complete any negative selection,
+	if so, we wanna stop that action from happening
+
+	NOTE, WE ARE REFERENCE FROM THE BOTTOM
+	'''
+	layer = layer.lower()
+	for sel in negatives:
+		pieces = [(o["name"], o["layer"].lower(), o["coords"][0], o["coords"][1]) for o in sel.objects]
+		for (pname, player, dx, dy) in pieces:
+			if pname != name or player != layer:
+				continue
+			# if this placement is that piece, the selection's bottom left would be here
+			ox, oy = x - dx, y_bottom - dy
+			if all((n, l, ox + px, oy + py) in world
+				   for (n, l, px, py) in pieces
+				   if not (n == name and l == layer and px == dx and py == dy)):
+				return True
+	return False
+#endregion
+
+#region Data processing
 def server_process_godot_data(fg_data, bg_data, objects_data, start_x, allNames, map_width:int =40, map_height:int=15):
 	'''
-	This will convert the dict data provided by Godot into Tensors that can be used within the network
-	PARAMS:
-	fg_data: 2D list of either -1 or the index of the object in objects_data
-	bg_data: 2D list of either -1 or the index of the object in objects_data
+	fg_data: 2D list of either -1 or the index of the object in objects_data (0,0) is the top left
+	bg_data: 2D list of either -1 or the index of the object in objects_data (0,0) is the top left
 	objects_data: list of dicts, each dict has keys "coords", "layer", and "name"
 	start_x: the x coord which will be used to offset the x values of the objects in objects_data
 	allNames: List of all of the names of objects that can be in the level.
+
+	THIS IS INDEXED FROM THE TOP LEFT CORNER
 	'''
 	# Create the tensor of our data.
 	map = np.zeros((map_width, map_height, len(allNames)), dtype=np.float32)
@@ -229,7 +258,9 @@ def server_process_godot_data(fg_data, bg_data, objects_data, start_x, allNames,
 	return map
 def server_process_godot_cache(cache_data):
 	'''
-	The cache thats sent on the very first send of data, we will cache for use throughout the rest of the application
+	The cache that is sent on the very first send of data, we will cache for use throughout the rest of the application
+
+	ALSO TOP LEFT INDEX ORIGIN
 	'''
 
 	# For now its just object sizes (since some stuff like pipes are 2x2)
@@ -239,125 +270,17 @@ def server_process_godot_cache(cache_data):
 		size = size.strip("()").split(",")
 		object_sizes[name] = [int(size[0]), int(size[1])]
 	return object_sizes
-def server_process_godot_selection(selection_data, selection_cache, objects_data, fg_data, bg_data):
-	'''
-	This is the primary mask that is used with the "explicit" learning.
-	it will be a List2D<> with the following possible values
-	-1 = negative selection, the user has specified this is NOT something that they want
-	0 = neutral, this is a basic selection
-	1 = positive selection, the user has sp[ecified this is something they want to see more of
+def GetEmptyMap(allNames, map_window_length:int = 40, map_window_height:int = 15):
+	emptyMap = []
+	for x in range(0, map_window_length):
+		column = []
+		for y in range(0, map_window_height):
+			column.append([0] * len(allNames))
+		emptyMap.append(column)
+	return emptyMap
+#endregion
 
-	for -1 and 1 selections, the following process will be done
-	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-	0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 -1 -1 -1 0 0 0 0
-	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
-	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
-	0 1 1 0 0 0 0 0 0 0 0 1 1 1 0 0 0 1 1 0 0 0 0 0 0 0 0 0 0 0
-
-	we will look through this, and when we reach a 1 (or -1) we will then scan horizontally untill we reach a 0
-	and then we will return to the original starting x, go down in y, and then keep scanning,
-	we will do this will we reach no ones 1s. this will mark a "selection"
-	we will then treat that as a tile, so we will provide it a name ("selection_01"), and mark its size.
-	we will check out cache of selections, and if this selection is not in the cache, we will add it to the cache,
-	if its already in the cache, we will increment its "strength by either: 1 or -1 depending on if it was a positive or negative selection.
-
-	For example the above example (assuming the two 2x3 are the same items) would create 3 entries into our cache
-	selection_01, size: (2, 3), strength: 2
-	selection_02, size: (3, 3), strength: 1
-	selection_03, size: (4, 1), strength: -1
-	'''
-	# Create a copy, so we can track locations we have visited
-	visited = [column[:] for column in selection_data]
-	# if we ever just don't send selection data, we will return the old selection_cache
-	if len(selection_data) == 0:
-		return selection_cache
-	map_width = len(selection_data)
-	map_height = len(selection_data[0])
-	for x in range(map_width):
-		for y in range(map_height):
-			# Check to see if we have already visited this location
-			current_cell = selection_data[x][y]
-			if visited[x][y] == 'V':
-				continue
-			# Now we check to see if its a selection
-			if current_cell == 0:
-				# Mark as visited and continue
-				visited[x][y] = 'V'
-				continue
-
-			# If we reach this point, we have hit either 1 or -1. we need to process the selection
-			selection, sign = obtain_selection(selected_data=selection_data, objects_data=objects_data, fg_data=fg_data, bg_data=bg_data, visited=visited, initial_x=x, initial_y=y)
-
-
-			# Check to see if this selection is already present within our cache
-			found_in_cache = False
-			for select in selection_cache:
-				if select == selection:
-					# if its already present, we want to update the "strength"
-					# we may also wanna consider like... if we add a negative selection should that just instantly reset it?
-					# like if a +10 gets a negative so we reset to -1, or a -10 gets a possitive do we reset to 1?
-					select.strength += sign
-					found_in_cache = True
-					break
-
-			if not found_in_cache:
-				selection.strength = sign
-				selection_cache.append(selection)
-
-			# Mark this cell as visited
-			visited[x][y] = 'V'
-
-	return selection_cache
-def obtain_selection(selected_data, objects_data, fg_data, bg_data, visited, initial_x, initial_y):
-	'''
-	THERE IS A POTENTIAL ISSUE IF TWO SELECTIONS ARE TOUCHING
-	THIS WILL NEED TO BE UPDATED, SINCE RIGHT NOW I AM MAKING ALOT OF ASSUMPTIONS!!!
-	'''
-	# Since we know this is called from the start of a selection, we can just grab if its a 1 or -1
-	sign = selected_data[initial_x][initial_y]
-	map_width = len(selected_data)
-	map_height = len(selected_data[0])
-
-	# Loop through the selection_data, starting from the initial_x and initial_y, and find the bounds of the selection
-	#TODO: Recall, this has a issue if two selections are right beside each other!!!
-	width = 0
-	while initial_x + width < map_width and visited[initial_x + width][initial_y] == sign:
-		width += 1
-
-	# Do the same for the height
-	height = 1
-	while initial_y + height < map_height and all(visited[initial_x + dx][initial_y + height] == sign for dx in range(width)):
-		height += 1
-
-	# Now that we know the bounds, go through every cell of the selection
-	# we treat 0,0 as the top left corner of this selection
-	object_indexes = set()
-	empty_coords = set()
-	for dx in range(width):
-		for dy in range(height):
-			# Mark as visited
-			visited[initial_x + dx][initial_y + dy] = 'V'
-			# loop through both the fg and bg
-			for grid in (fg_data, bg_data):
-				val = grid[initial_x + dx][initial_y + dy]
-				if val != -1:
-					object_indexes.add(val)
-				# later we will handle air blocks
-
-	objects = []
-	for index in object_indexes:
-		#TODO: Th
-		if index >= 0 and index < len(objects_data) and objects_data[index].get("name"):
-			obj = objects_data[index]
-			objects.append({"coords": [obj["coords"][0] - initial_x, obj["coords"][1] - initial_y],
-							"layer": obj["layer"],
-							"name": obj["name"]})
-	# create a new object
-	return Selection_Object((width, height), objects), sign
-
-
+#region Action Masking and Tile Placement
 def server_check_tile_placement(tile, pos, occupied_grid, object_sizes):
 	# pretty much the copy from the Godot implementation + adding a bounds check
 	# Get the size of the tile we are trying to check
@@ -378,7 +301,6 @@ def server_check_tile_placement(tile, pos, occupied_grid, object_sizes):
 def server_fill_placement(fill_grid, occupied_grid):
 	for cell in fill_grid:
 		occupied_grid[cell[0]][cell[1]] = 0 # just not -1, to show SOMETHING is here
-
 def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_x, actions, map_width:int=40, map_height:int=15):
 
 	mask = np.zeros((map_width, map_height, len(actions)), dtype=bool)
@@ -394,8 +316,9 @@ def server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, start_
 	return mask
 #endregion
 # ————— END New Implementation ————— #
-# BETTER MODEL BUILDING THAT CAN TAKE IN PARAMS FOR TUNING
-MODEL_PATH = Path("Server.weights.h5")
+
+
+#region Model Creation & Server Setup
 def server_build_model(learning_rate=0.0005, conv_filters=(4, 8, 16), kernel_sizes=(4, 3, 3), activation='leaky_relu'):
 	#networkInput = tflearn.input_data(shape=[None, 40, 15, len(allNames)])
 	network_inputs = layers.Input(shape=(40,15,len(allNames)))
@@ -439,7 +362,8 @@ def server_create_socket(config: ServerConfig):
 	s.bind((TCP_IP, TCP_PORT))
 	s.listen(1)
 	return s
-def server_connection_handler(config: ServerConfig, socket, model):
+#endregion
+def server_connection_handler(config: ServerConfig, socket, model, minimumInteractionConfidence, confidenceDelta ):
 	print("————— Starting Server Connection —————")
 
 	# Wait for the server connection
@@ -465,10 +389,6 @@ def server_connection_handler(config: ServerConfig, socket, model):
 	# ————— END Caches ————— #
 	# WAIT FOR PROMPT
 
-	minimumInteractionConfidence = 0.0001 # trying something lower than 0.01
-	confidenceDelta = 0.001
-	map_length = 40  # Left to right
-	map_height = 15  # Top to bottom
 	while 1:
 		try:
 			length = struct.unpack(">I", server_receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
@@ -506,8 +426,8 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				thisStartX = int(data["camera"]) # jk this is actually called "camera"
 				if "cache" in data:
 					object_sizes = server_process_godot_cache(data["cache"])
-				if "mask" in data:
-					selection_cache = server_process_godot_selection(data["mask"], selection_cache, objects_data, fg_data, bg_data)
+				if "selections" in data:
+					selection_cache = server_process_godot_selection(data["selections"], selection_cache, objects_data, fg_data, bg_data)
 				if len(selection_cache) > 0:
 					print("----- Printing Selection Cache -----")
 					print(selection_cache)
@@ -519,7 +439,9 @@ def server_connection_handler(config: ServerConfig, socket, model):
 				fg_grid = [column[:] for column in fg_data]
 				bg_grid = [column[:] for column in bg_data]
 				actionMask = server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, thisStartX, actions, map_length, map_height)
-				#currMap = StringToMap(dataSplits[0], allNames)
+				negatives = [s for s in selection_cache if s.strength < 0]
+				world = {(o["name"], o["layer"].lower(), o["coords"][0], o["coords"][1])
+						 for o in objects_data if o.get("name") and "layer" in o and "coords" in o}
 				# ————— Retrain ————— #
 				if not prevMap == None and abs(thisStartX - prevStartX) < 30: # replace 30 with a threshold percentage!
 					anyChange = False
@@ -575,6 +497,13 @@ def server_connection_handler(config: ServerConfig, socket, model):
 									# nah, cant do it
 									if fill_grid is None:
 										continue
+
+									# NEW: batch-aware negative selection check
+									y_bottom = (map_height - 1) - y  # grid y (from the top) -> y from the bottom
+									layer = object_layers[actions[z]]
+									if negatives and would_complete_negative(actions[z], layer, x + thisStartX, y_bottom, world, negatives):
+										continue  # this would finish a negative shape, skip it
+									world.add((actions[z], layer.lower(), x + thisStartX,y_bottom))  # later suggestions in this batch see it
 									# fill our local grid so we dont try to play ontop of it later
 									server_fill_placement(fill_grid, placed_grid)
 									# END ACTION MASKING INCLUSION ————————————————————————————————
@@ -582,7 +511,6 @@ def server_connection_handler(config: ServerConfig, socket, model):
 									sents.append([x, y, z])
 									print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
 									rejections.append([actions[z], x + thisStartX, y])
-									# print ("     EXPLANATION: "+GetExplanation(convW, currMap, x, y, allNames))
 									thisAction[x][y][z] = predY[0][x][y][z]
 									nothingSent = False
 							elif nothingSent:
@@ -618,34 +546,6 @@ def server_connection_handler(config: ServerConfig, socket, model):
 
 				# Yippie, time to send to Godot!
 				server_send({"suggestions": server_suggestions}, conn)
-
-				#conn.close()  # Close (idk if I wanna close right here LOL no we dont)
-
-				# PRINT MAP
-				'''
-				currMapStr = ""
-				for y in range(14, -1, -1):
-					line = ""
-					for x in range(0, 40):
-						if 1 in currMap[x][y]:
-							line+= allNames[currMap[x][y].index(1)]+"-"
-						else:
-							line+="      -"
-					currMapStr+=line+"\n"
-				print (currMapStr)
-				'''
-				# EXPLANATIONS (commented out for now)
-				'''
-				convW = np.array(model.get_weights(conv.W))
-				for sent in sents:
-					print("---")
-					print("FOR SENT: " + str([actions[sent[2]], sent[0], sent[1], predY[0][sent[0]][sent[1]][sent[2]]]))
-					if 1 in currMap[sent[0]][sent[1]]:
-						# WHY IS THIS NOT HIT????
-						print("IN CURR MAP: " + str(allNames[currMap[sent[0]][sent[1]].index(1)]))
-					print("EXPLAIN:\n" + GetExplanation(convW, currMap, sent[0], sent[1], allNames))
-				'''
-
 				prevMap = list(currMap)
 				prevAction = list(thisAction)
 				prevStartX = thisStartX
@@ -661,11 +561,14 @@ def server_connection_handler(config: ServerConfig, socket, model):
 			break
 
 
+
+
+
 def main():
 	config = ServerConfig()
 	model = server_create_model(force_retrain=False)
 	socket = server_create_socket(config)
-	server_connection_handler(config=config, socket=socket, model=model)
+	server_connection_handler(config=config, socket=socket, model=model, minimumInteractionConfidence=minimumInteractionConfidence, confidenceDelta=confidenceDelta)
 
 
 if __name__ == "__main__":
