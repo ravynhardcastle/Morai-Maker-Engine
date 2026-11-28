@@ -18,6 +18,8 @@ var fg_objects: Array[StringName] # List of objects that are in the foreground
 signal receive_suggestion(tile: StringName, coords: Vector2i)
 var last_suggestion: Array[Dictionary] # Most recent suggestion given
 
+signal end_turn
+
 var selected_tile: EditorTile:
 	set(new_tile):
 		if selected_tile:
@@ -67,6 +69,9 @@ func _process(_delta: float) -> void:
 		
 		var suggestions = data.get("suggestions")
 		if (suggestions): _on_receive_suggestion(suggestions)
+		
+		var end_turn_python = data.get("end_turn")
+		if end_turn_python: end_turn.emit()
 	else:
 		print("[Client] Failed to read server sent data")
 		

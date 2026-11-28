@@ -1,6 +1,6 @@
 # ————— IMPORTS ————— #
 
-from Pretraining import data_path, scores_path, testNames # use the same ones from Pretraining.py
+from Pretraining import data_path # use the same ones from Pretraining.py
 from tile_config import allNames
 # ————— END IMPORTS ————— #
 
@@ -30,11 +30,11 @@ Dictionary of x (int): Dictionary of...
 '''
 
 def main():
-	extract_level()
+	print(extract_levels())
 
-def extract_level():
+def extract_levels(path = data_path): 
 	levels = {}
-	for file_name in data_path.glob('*/*.txt'):
+	for file_name in path.glob('*/*.txt'):
 		levels[file_name] = {}
 		content = []
 		with open(file_name) as file:
@@ -47,7 +47,7 @@ def extract_level():
 		ai_removals: list[dict[int, dict[int, list[int]]]] = [{}]
 		additions: list[int] = [] # Additions per turn
 		removals: list[int] = [] # Removals per turn
-		state: list = [] # Objects rep per turn
+		state: list[dict[int, dict[int, list[int]]]] = [] # Objects rep per turn
 		turn = 0
 		if len(content)>0 and "Start" in content[0]:
 			player_control = True
@@ -145,7 +145,7 @@ def extract_level():
 			"ai_removals": ai_removals
 		}
 	
-	print(levels)
+	return levels
 	
 def remove_entry(curr_list: list[dict[int, dict[int, list[int]]]], turn: int, x: int, y: int, index: int):
 	curr_list[turn][x][y].remove(index)

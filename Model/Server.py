@@ -363,7 +363,7 @@ def server_create_socket(config: ServerConfig):
 	s.listen(1)
 	return s
 #endregion
-def server_connection_handler(config: ServerConfig, socket, model, minimumInteractionConfidence, confidenceDelta ):
+def init_server(config: ServerConfig):
 	print("————— Starting Server Connection —————")
 
 	# Wait for the server connection
@@ -371,6 +371,11 @@ def server_connection_handler(config: ServerConfig, socket, model, minimumIntera
 	print(f"[Server] Waiting for connection from Godot.")
 	conn, addr = socket.accept()
 	print(f"[Server] Connected {addr}. Thanks Godot! :)")
+
+	return conn, addr
+
+def server_connection_handler(config: ServerConfig, socket, model, minimumInteractionConfidence, confidenceDelta ):
+	conn, addr = init_server(config)
 
 	# Initialize variables
 	prevMap = None
@@ -390,177 +395,182 @@ def server_connection_handler(config: ServerConfig, socket, model, minimumIntera
 	# WAIT FOR PROMPT
 
 	while 1:
-		try:
-			length = struct.unpack(">I", server_receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
-			data = json.loads(server_receive(length, conn))
-			print(f"Successfully obtained data from Godot! Payload size: {length} bytes")
+		if attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prevMap, prevAction, prevStartX, rejections, object_sizes, object_layers, selection_cache) == False:
+			break
 
-			# FOR TESTING -----------------------
-			# we will send a message back to Godot to inform them we recieved their data
-			data_payload = {'msg': "[Server-msg] Data received successfully!"}
-			server_send(data_payload, conn)
-			# ------------------------------------
-			if len(data) > 0:
-				# TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
-				# but it's a dictionary now
-				# print("Data: "+str(data)+", "+str(len(data)))
+def attempt_server_receive(conn, model, minimumInteractionConfidence, confidenceDelta, prevMap, prevAction, prevStartX: int, rejections: list, object_sizes: dict, object_layers: dict, selection_cache: list) -> bool | None:
+	try:
+		length = struct.unpack(">I", server_receive(4, conn))[0]  # 4 because that's how many bytes we set in godot
+		data = json.loads(server_receive(length, conn))
+		print(f"Successfully obtained data from Godot! Payload size: {length} bytes")
 
-				# Data that's to be received comes in a dictionary in the following format:
-				# Other notes to remember [0,0] is the top left corner of the grid
-				'''
-				{'bg': [[]], # where this contains a values of either -1 (nothing) or the index of whatever object is in this location, within the 'allNames" list (I assume)
-				'fg': [[]], # same as above, but for foreground objects,
-				'objects': [{'coords': [x, y],
-							 'layer': 'BG' or 'FG',
-							 'name': str, # name of the object, which should be in the allNames list
-				'camera': int, the x value of the camera, used for its offset.
-				'''
-				# ————— Extract Data & Prepare Variables ————— #
-				bg_data = data["bg"]
-				fg_data = data["fg"]
-				objects_data = data["objects"]
-				# Fill the object_layers "cache" (its not really a cache I know)
-				for object in objects_data:
-					if "name" in object and "layer" in object:
-						object_layers[object["name"]] = object["layer"]
-				thisStartX = int(data["camera"]) # jk this is actually called "camera"
-				if "cache" in data:
-					object_sizes = server_process_godot_cache(data["cache"])
-				if "selections" in data:
-					selection_cache = server_process_godot_selection(data["selections"], selection_cache, objects_data, fg_data, bg_data)
-				if len(selection_cache) > 0:
-					print("----- Printing Selection Cache -----")
-					print(selection_cache)
-					print("------------------------------------")
-				# ————— Need to convert everything to tensors ————— #
-				currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
-				# ————— Action Masking ————— #
-				# making a copy, since these get modified and I dont wanna mess up the main ones
-				fg_grid = [column[:] for column in fg_data]
-				bg_grid = [column[:] for column in bg_data]
-				actionMask = server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, thisStartX, actions, map_length, map_height)
-				negatives = [s for s in selection_cache if s.strength < 0]
-				world = {(o["name"], o["layer"].lower(), o["coords"][0], o["coords"][1])
-						 for o in objects_data if o.get("name") and "layer" in o and "coords" in o}
-				# ————— Retrain ————— #
-				if not prevMap == None and abs(thisStartX - prevStartX) < 30: # replace 30 with a threshold percentage!
-					anyChange = False
-					differenceX = thisStartX - prevStartX
-					for x in range(0, map_length):
-						if x + differenceX < 40 and x + differenceX >= 0:
-							for y in range(0, 15):
-								for z in range(0, len(actions)):
-									if prevAction[x + differenceX][y][z] > 0:
-										if currMap[x][y][z] > 0:
-											anyChange = True
-											prevAction[x + differenceX][y][z] += 0.1
-										else:
-											anyChange = True
-											prevAction[x + differenceX][y][z] -= 0.1
+		# FOR TESTING -----------------------
+		# we will send a message back to Godot to inform them we recieved their data
+		data_payload = {'msg': "[Server-msg] Data received successfully!"}
+		server_send(data_payload, conn)
+		# ------------------------------------
+		if len(data) > 0:
+			# TODO: Data processing to make it fit the old format. This won't work at all, it assumes that our data is one big string
+			# but it's a dictionary now
+			# print("Data: "+str(data)+", "+str(len(data)))
 
-											print("REMOVED: " + str([actions[z], x + thisStartX, y]))
-									elif currMap[x][y][z] > 0:
+			# Data that's to be received comes in a dictionary in the following format:
+			# Other notes to remember [0,0] is the top left corner of the grid
+			'''
+			{'bg': [[]], # where this contains a values of either -1 (nothing) or the index of whatever object is in this location, within the 'allNames" list (I assume)
+			'fg': [[]], # same as above, but for foreground objects,
+			'objects': [{'coords': [x, y],
+						 'layer': 'BG' or 'FG',
+						 'name': str, # name of the object, which should be in the allNames list
+			'camera': int, the x value of the camera, used for its offset.
+			'''
+			# ————— Extract Data & Prepare Variables ————— #
+			bg_data = data["bg"]
+			fg_data = data["fg"]
+			objects_data = data["objects"]
+			# Fill the object_layers "cache" (its not really a cache I know)
+			for object in objects_data:
+				if "name" in object and "layer" in object:
+					object_layers[object["name"]] = object["layer"]
+			thisStartX = int(data["camera"]) # jk this is actually called "camera"
+			if "cache" in data:
+				object_sizes = server_process_godot_cache(data["cache"])
+			if "selections" in data:
+				selection_cache = server_process_godot_selection(data["selections"], selection_cache, objects_data, fg_data, bg_data)
+			if len(selection_cache) > 0:
+				print("----- Printing Selection Cache -----")
+				print(selection_cache)
+				print("------------------------------------")
+			# ————— Need to convert everything to tensors ————— #
+			currMap = server_process_godot_data(fg_data, bg_data, objects_data, thisStartX, allNames, map_length, map_height)
+			# ————— Action Masking ————— #
+			# making a copy, since these get modified and I dont wanna mess up the main ones
+			fg_grid = [column[:] for column in fg_data]
+			bg_grid = [column[:] for column in bg_data]
+			actionMask = server_get_action_mask(fg_grid, bg_grid, object_sizes, object_layers, thisStartX, actions, map_length, map_height)
+			negatives = [s for s in selection_cache if s.strength < 0]
+			world = {(o["name"], o["layer"].lower(), o["coords"][0], o["coords"][1])
+					 for o in objects_data if o.get("name") and "layer" in o and "coords" in o}
+			# ————— Retrain ————— #
+			if not prevMap == None and abs(thisStartX - prevStartX) < 30: # replace 30 with a threshold percentage!
+				anyChange = False
+				differenceX = thisStartX - prevStartX
+				for x in range(0, map_length):
+					if x + differenceX < 40 and x + differenceX >= 0:
+						for y in range(0, 15):
+							for z in range(0, len(actions)):
+								if prevAction[x + differenceX][y][z] > 0:
+									if currMap[x][y][z] > 0:
 										anyChange = True
 										prevAction[x + differenceX][y][z] += 0.1
-						# LEARN
-					if anyChange:
-						minimumInteractionConfidence += confidenceDelta
-						print("RETRAIN")
-						model.fit(np.array([prevMap]),
-								  np.array([prevAction]),
-								  epochs=1,
-								  shuffle=False,
-								  batch_size=1,)
+									else:
+										anyChange = True
+										prevAction[x + differenceX][y][z] -= 0.1
 
-				#predY = model.predict([currMap])
-				predY = model.predict(np.array([currMap]))
-				thisAction = GetEmptyMap(actions)
+										print("REMOVED: " + str([actions[z], x + thisStartX, y]))
+								elif currMap[x][y][z] > 0:
+									anyChange = True
+									prevAction[x + differenceX][y][z] += 0.1
+				# LEARN
+				if anyChange:
+					minimumInteractionConfidence += confidenceDelta
+					print("RETRAIN")
+					model.fit(np.array([prevMap]),
+							  np.array([prevAction]),
+							  epochs=1,
+							  shuffle=False,
+							  batch_size=1,)
 
-				# REPLY
-				toString = ""
-				nothingSent = True
-				maxToSend = []
-				maxVal = -1
+			#predY = model.predict([currMap])
+			predY = model.predict(np.array([currMap]))
+			thisAction = GetEmptyMap(actions)
 
-				sents = []
-				for x in range(0, map_length):
-					for y in range(0, map_height):
-						for z in range(0, len(actions)):
-							if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(sents) < 30 and actionMask[x][y][z]:
+			# REPLY
+			toString = ""
+			nothingSent = True
+			maxToSend = []
+			maxVal = -1
+
+			sents = []
+			for x in range(0, map_length):
+				for y in range(0, map_height):
+					for z in range(0, len(actions)):
+						if predY[0][x][y][z] > minimumInteractionConfidence and currMap[x][y][z] == 0 and len(sents) < 30 and actionMask[x][y][z]:
+							if not [actions[z], x + thisStartX, y] in rejections:
+								#conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*") # Commenting out to try a different style
+
+								# ACTION MASKING, MAKE SURE WE NOTE THAT WE ARE CLAIMING SPACE
+								# We try to claim the space (if we can)
+								placed_grid = fg_grid if object_layers[actions[z]] == "fg" else bg_grid
+								fill_grid = server_check_tile_placement(actions[z], (x + thisStartX, y), placed_grid, object_sizes)
+								# nah, cant do it
+								if fill_grid is None:
+									continue
+
+								# NEW: batch-aware negative selection check
+								y_bottom = (map_height - 1) - y  # grid y (from the top) -> y from the bottom
+								layer = object_layers[actions[z]]
+								if negatives and would_complete_negative(actions[z], layer, x + thisStartX, y_bottom, world, negatives):
+									continue  # this would finish a negative shape, skip it
+								world.add((actions[z], layer.lower(), x + thisStartX,y_bottom))  # later suggestions in this batch see it
+								# fill our local grid so we dont try to play ontop of it later
+								server_fill_placement(fill_grid, placed_grid)
+								# END ACTION MASKING INCLUSION ————————————————————————————————
+
+								sents.append([x, y, z])
+								print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
+								rejections.append([actions[z], x + thisStartX, y])
+								thisAction[x][y][z] = predY[0][x][y][z]
+								nothingSent = False
+						elif nothingSent:
+							if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1 and actionMask[x][y][z]:
 								if not [actions[z], x + thisStartX, y] in rejections:
-									#conn.send(str(x) + "," + str(y) + "," + str(z) + "," + str(predY[0][x][y][z]) + "*") # Commenting out to try a different style
+									maxToSend = [x, y, z, predY[0][x][y][z]]
+									maxVal = predY[0][x][y][z]
+			# MUST DO SOMETHING
+			if nothingSent and len(maxToSend) > 0:
+				thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
+				sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
+				#rejections.append([actions[maxToSend[2]], maxToSend[0] + thisStartX, maxToSend[1]]) # Do we need to do this? im unsure
+				#conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*") # since we are appending,
+				# at the above line, we dont need to send this individually
+				print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
 
-									# ACTION MASKING, MAKE SURE WE NOTE THAT WE ARE CLAIMING SPACE
-									# We try to claim the space (if we can)
-									placed_grid = fg_grid if object_layers[actions[z]] == "fg" else bg_grid
-									fill_grid = server_check_tile_placement(actions[z], (x + thisStartX, y), placed_grid, object_sizes)
-									# nah, cant do it
-									if fill_grid is None:
-										continue
+			# SLight change in format, all suggestions are gonna be sent at the very end!
+			# the format being chosen is:
+			'''
+			"coords" : (int, int), (x,y), the coordinates of the suggestion
+			"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
+			"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
+			"confidence" : float, the confidence of the suggestion, from the model
+			'''
+			server_suggestions = []
+			for sent in sents:
+				server_suggestions.append({
+					"coords": (sent[0] + thisStartX, sent[1]),
+					"name": actions[sent[2]],
+					"size": object_sizes.get(actions[sent[2]]),  # default size is 1x1 if not found in cache
+					"confidence": float(predY[0][sent[0]][sent[1]][sent[2]])
+				})
 
-									# NEW: batch-aware negative selection check
-									y_bottom = (map_height - 1) - y  # grid y (from the top) -> y from the bottom
-									layer = object_layers[actions[z]]
-									if negatives and would_complete_negative(actions[z], layer, x + thisStartX, y_bottom, world, negatives):
-										continue  # this would finish a negative shape, skip it
-									world.add((actions[z], layer.lower(), x + thisStartX,y_bottom))  # later suggestions in this batch see it
-									# fill our local grid so we dont try to play ontop of it later
-									server_fill_placement(fill_grid, placed_grid)
-									# END ACTION MASKING INCLUSION ————————————————————————————————
-
-									sents.append([x, y, z])
-									print("SENDING: " + str([actions[z], x + thisStartX, y, predY[0][x][y][z]]))
-									rejections.append([actions[z], x + thisStartX, y])
-									thisAction[x][y][z] = predY[0][x][y][z]
-									nothingSent = False
-							elif nothingSent:
-								if predY[0][x][y][z] > maxVal and currMap[x][y][z] == 0 and not z == len(actions) - 1 and actionMask[x][y][z]:
-									if not [actions[z], x + thisStartX, y] in rejections:
-										maxToSend = [x, y, z, predY[0][x][y][z]]
-										maxVal = predY[0][x][y][z]
-				# MUST DO SOMETHING
-				if nothingSent and len(maxToSend) > 0:
-					thisAction[maxToSend[0]][maxToSend[1]][maxToSend[2]] = minimumInteractionConfidence + confidenceDelta
-					sents.append([maxToSend[0], maxToSend[1], maxToSend[2]])
-					#rejections.append([actions[maxToSend[2]], maxToSend[0] + thisStartX, maxToSend[1]]) # Do we need to do this? im unsure
-					#conn.send(str(maxToSend[0]) + "," + str(maxToSend[1]) + "," + str(maxToSend[2]) + "," + str(maxToSend[3]) + "*") # since we are appending,
-					# at the above line, we dont need to send this individually
-					print("FAILURE CASE: " + str([actions[maxToSend[2]], maxToSend[0], maxToSend[1], maxToSend[3]]))
-
-				# SLight change in format, all suggestions are gonna be sent at the very end!
-				# the format being chosen is:
-				'''
-				"coords" : (int, int), (x,y), the coordinates of the suggestion
-				"name" : str, the name of the suggestion (from allNames / cache. w/e we end up sticking with)
-				"size" : (int, int), (width, height), the size of the tile from the cache... we prolly dont need to send this but yeah
-				"confidence" : float, the confidence of the suggestion, from the model
-				'''
-				server_suggestions = []
-				for sent in sents:
-					server_suggestions.append({
-						"coords": (sent[0] + thisStartX, sent[1]),
-						"name": actions[sent[2]],
-						"size": object_sizes.get(actions[sent[2]]),  # default size is 1x1 if not found in cache
-						"confidence": float(predY[0][sent[0]][sent[1]][sent[2]])
-					})
-
-				# Yippie, time to send to Godot!
-				server_send({"suggestions": server_suggestions}, conn)
-				prevMap = list(currMap)
-				prevAction = list(thisAction)
-				prevStartX = thisStartX
-				#conn, addr = socket.accept()  # Reset (i dont think we actually want to do this? NOPE we dont lol)
-		except ConnectionError as e:
-			print(f"[Server] Connection error: {e}. CLosing Connection")
-			conn.close()
-			del conn
-			break
-		except KeyboardInterrupt:
-			conn.close()
-			del conn
-			break
-
-
+			# Yippie, time to send to Godot!
+			server_send({"suggestions": server_suggestions}, conn)
+			prevMap = list(currMap)
+			prevAction = list(thisAction)
+			prevStartX = thisStartX
+		#conn, addr = socket.accept()  # Reset (i dont think we actually want to do this? NOPE we dont lol)
+			return True
+	except ConnectionError as e:
+		print(f"[Server] Connection error: {e}. CLosing Connection")
+		conn.close()
+		del conn
+		return False
+	except KeyboardInterrupt:
+		conn.close()
+		del conn
+		return False
+	
+	return None
 
 
 

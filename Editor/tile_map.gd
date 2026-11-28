@@ -109,6 +109,7 @@ func _ready() -> void:
 	RenderingServer.frame_pre_draw.connect(_sync_cursor)
 	generate_map()
 	Game.receive_suggestion.connect(_on_receive_suggestion)
+	Game.end_turn.connect(_on_end_turn_button_pressed)
 
 func _physics_process(_delta: float) -> void:
 	# Highlight the tile / semantic object you're selecting
